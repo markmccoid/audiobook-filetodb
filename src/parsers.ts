@@ -104,7 +104,10 @@ export type BookInfo = {
   otherCategories?: string[];
 };
 export function parseBookInfoText(textFile) {
-  const lines = fs.readFileSync(textFile).toString().split("\r\n");
+  let lines = fs.readFileSync(textFile, "utf8").toString().split("\r\n");
+  if (lines.length === 1) {
+    lines = fs.readFileSync(textFile, "utf16le").toString().split("\r\n");
+  }
   let foundSummaryFlag = false;
   let bookInfo: BookInfo = {};
   let summary = [];
