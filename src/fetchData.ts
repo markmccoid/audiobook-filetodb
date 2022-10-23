@@ -1,11 +1,10 @@
 const axios = require("axios");
-async function fakeGetBookData(author, title) {
+export async function fakeGetBookData(authors, title): Promise<GoogleData> {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       resolve({
-        author,
+        authors,
         title,
-        googleTitle: "gt" + title,
       });
     }, 200);
   });
@@ -16,34 +15,72 @@ function sanitizeTitle(title) {
   return title.replace(regex, "");
 }
 
-function getBookData(author, title) {
+export type GoogleData = {
+  id?: string;
+  title?: string;
+  subTitle?: string;
+  authors?: string[];
+  description?: string;
+  publisher?: string;
+  publishedDate?: string;
+  pageCount?: string;
+  categories?: string[];
+  imageURL?: string;
+  bookDetailsURL?: string;
+  isbn?: { type: string; identifier: string }[];
+  googleISBNS?: Record<string, string>;
+  query?: string;
+  queryDateString?: string;
+};
+export async function getBookData(authorIn, titleIn): Promise<GoogleData> {
   let baseURL = "https://www.googleapis.com/books/v1/volumes";
-  let query = `${baseURL}?q=${sanitizeTitle(title)}+inauthor:${author}`;
-  let id = `${author.replace(/\s/g, "")}-${title.replace(/\s/g, "")}`;
+  let query = `${baseURL}?q=${sanitizeTitle(titleIn)}+inauthor:${authorIn}`;
+  let id = `${authorIn.replace(/\s/g, "")}-${titleIn.replace(/\s/g, "")}`;
+  const queryDateString = new Date()
+    .toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+    .replace(/\//g, "-");
+  // console.log(query);
   return axios
     .get(query)
     .then((resp) => {
+      if (resp.data.totalItems === 0) {
+        return {
+          query,
+          queryDateString,
+        };
+      }
       let bookInfo = resp.data.items[0].volumeInfo;
-      console.log("----------------");
-      console.log(baseURL + query);
-      console.log("----------------");
-      let googleTitle = bookInfo.title;
-      let authors = bookInfo.authors;
-      let subTitle = bookInfo.subtitle;
-      let description = bookInfo.description;
-      let publisher = bookInfo.publisher;
-      let publishedDate = bookInfo.publishedDate;
-      let pageCount = bookInfo.pageCount;
-      let categories = bookInfo.categories;
-      let imageURL = bookInfo.imageLinks ? bookInfo.imageLinks.thumbnail : "";
-      let bookDetailsURL = bookInfo.infoLink;
-      let isbn = bookInfo.industryIdentifiers || [];
+
+      let title = bookInfo?.title;
+      let authors = bookInfo?.authors;
+      let subTitle = bookInfo?.subtitle;
+      let description = bookInfo?.description;
+      let publisher = bookInfo?.publisher;
+      let publishedDate = bookInfo?.publishedDate;
+      let pageCount = bookInfo?.pageCount;
+      let categories = bookInfo?.categories;
+      let imageURL = bookInfo?.imageLinks
+        ? bookInfo?.imageLinks?.thumbnail
+        : "";
+      let bookDetailsURL = bookInfo?.infoLink;
+      let isbn: Pick<GoogleData, "isbn"> = bookInfo?.industryIdentifiers;
+      let googleISBNS = undefined;
+
+      if (Array.isArray(isbn)) {
+        googleISBNS =
+          isbn &&
+          isbn.reduce<Record<string, string>>((final, el) => {
+            return { ...final, [el.type]: el.identifier };
+          }, {});
+      }
       return {
         id,
-        author,
-        title,
         subTitle,
-        googleTitle,
+        title,
         authors,
         description,
         publisher,
@@ -52,13 +89,14 @@ function getBookData(author, title) {
         categories,
         imageURL,
         bookDetailsURL,
-        isbn,
+        googleISBNS,
         query,
+        queryDateString,
       };
     })
     .catch((e) => {
       //console.log("ERROR", e.response.status);
-      return { id, author, title, error: e };
+      return { id, authorIn, titleIn, error: e };
     });
 }
 

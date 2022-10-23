@@ -26,13 +26,39 @@
  * }
  */
 
-const { count } = require("console");
-const fs = require("fs");
-const path = require("path");
-const { getBookData, fakeGetBookData } = require("./fetchData");
+import fs from "fs";
+import path from "path";
+import chalk from "chalk";
+
+import {
+  parseFolderName,
+  parseBookInfoText,
+  getMetadataFromFile,
+} from "./parsers";
+import { getBookData, fakeGetBookData } from "./fetchData";
+import type { BookInfo } from "./parsers";
+import type { GoogleData } from "./fetchData";
+
+export type FolderMetadata = {
+  id: string;
+  folderName: string;
+  fullPath: string;
+  audioFileCount: number;
+  textFileCount: number;
+  infoFileData: BookInfo;
+  folderImages: string[];
+  folderNameData: {
+    title: string;
+    publishedYear: string;
+    author: string;
+    category: string;
+  };
+  googleAPIData: GoogleData;
+};
 
 //-- Local contants
 const AUDIOFORMATS = [".mp3", ".mb4", ".mp4"];
+const IMAGEFORMATS = [".jpg", ".png"];
 /**
  * Convert the passed dirPath to use the passed pathSep
  * @param {*} dirPath
@@ -44,160 +70,6 @@ function formatPath(dirPath, pathSep = "/") {
   return pathArray.join(pathSep);
 }
 
-/**
- * parseDirName
- * - format 1 - Tim S. Grover - 2021 - Winning (Business)
- * - format 2 - Tim S. Grover-Winning
- * @param {*} dirName
- */
-function parseFolderName(dirName) {
-  let bookCategory = "";
-  let bookTitle = "";
-  let bookAuthor = "";
-  let bookYear = "";
-  // Create string without the category (if it exists)
-  let sansCategory = dirName;
-  let format = "format1";
-
-  //-- Get the CATEGORY
-  const startCategory =
-    dirName.indexOf("(") !== -1 ? dirName.indexOf("(") + 1 : -1;
-  const endCategory = dirName.indexOf(")");
-  if (startCategory !== -1 && endCategory !== -1) {
-    // assing a book category
-    bookCategory = dirName.slice(startCategory, endCategory).trim();
-    // used to extract the title of book
-    sansCategory = dirName.slice(0, startCategory - 1);
-  }
-
-  // Check if format 1
-  if (bookCategory === "") {
-    format = "format2";
-  }
-  if ((format = "format1")) {
-    //-- Get the YEAR
-    const startYear =
-      sansCategory.indexOf("-") !== -1 ? sansCategory.indexOf("-") + 1 : -1;
-    const endYear =
-      sansCategory.lastIndexOf("-") !== -1
-        ? sansCategory.lastIndexOf("-") - 1
-        : -1;
-    if (startYear !== -1 && endYear !== -1) {
-      bookYear = sansCategory.slice(startYear, endYear).trim();
-      // Make sure we extracted a 4 digit number, if not blank out bookYear
-      let isnum = /^\d\d\d\d$/.test(bookYear);
-      if (!isnum) {
-        bookYear = "";
-      }
-    }
-    //-- Get the TITLE and AUTHOR
-    const startTitle =
-      sansCategory.lastIndexOf("-") !== -1
-        ? sansCategory.lastIndexOf("-") + 1
-        : -1;
-
-    if (startTitle !== -1) {
-      bookTitle = sansCategory.slice(startTitle).trim();
-    }
-
-    const endAuthor =
-      dirName.indexOf("-") !== -1 ? dirName.indexOf("-") - 1 : -1;
-    bookAuthor = dirName.slice(0, endAuthor).trim();
-  } else {
-    //! Format 2
-    //-- Get the TITLE and AUTHOR
-    const startTitle = dirName.indexOf("-") + 1;
-
-    if (startTitle !== -1) {
-      bookTitle = dirName.slice(startTitle).trim();
-    }
-
-    const endAuthor = dirName.indexOf("-") - 1;
-    bookAuthor = dirName.slice(0, endAuthor).trim();
-  }
-  return {
-    folderBookAuthor: bookAuthor,
-    folderBookTitle: bookTitle,
-    folderBookCategory: bookCategory,
-    folderBookYear: bookYear,
-  };
-}
-
-//--======================================================
-//-- Parse Book Info Text file
-//--======================================================
-type BookInfo = {
-  summary?: string;
-  length?: string;
-  author?: string;
-  narratedBy?: string;
-  releaseDate?: string;
-  otherCategories?: string[];
-};
-function parseBookInfoText(textFile) {
-  const lines = fs.readFileSync(textFile).toString().split("\r\n");
-  let foundSummaryFlag = false;
-  let bookInfo: BookInfo = {};
-  let summary = [];
-  for (let line of lines) {
-    // Since summary exists at the end of the file and is multiple line
-    // We set a flag and once true, just push all lines into summary array
-    // before returning, we join array elements
-    if (foundSummaryFlag) {
-      summary.push(line);
-      continue;
-    }
-    const lowercaseLine = line.toLowerCase();
-    //-- Length Of Book
-    if (lowercaseLine.includes("length:")) {
-      bookInfo.length = line
-        .slice(line.toLowerCase().indexOf("length:") + 7)
-        .trim();
-      continue;
-    }
-    //-- Author and Narrator
-    if (lowercaseLine.includes("by:")) {
-      if (lowercaseLine.indexOf("by:") < 2) {
-        bookInfo.author = line.substring(lowercaseLine.indexOf(":") + 1).trim();
-      }
-      if (
-        lowercaseLine.indexOf("by:") > 2 &&
-        lowercaseLine.includes("narrat")
-      ) {
-        bookInfo.narratedBy = line
-          .substring(lowercaseLine.indexOf(":") + 1)
-          .trim();
-      }
-      continue;
-    }
-    //-- Release date
-    if (lowercaseLine.includes("release")) {
-      bookInfo.releaseDate = line
-        .substring(lowercaseLine.indexOf(":") + 1)
-        .trim();
-    }
-    //-- Other Categories
-    if (lowercaseLine.includes("categor")) {
-      bookInfo.otherCategories = line
-        .substring(lowercaseLine.indexOf(":") + 1)
-        .trim()
-        .split(",")
-        .map((el) => el.trim());
-    }
-    //-- Publisher Summary
-    if (
-      lowercaseLine.includes("publisher's summary") ||
-      lowercaseLine.includes("summary")
-    ) {
-      foundSummaryFlag = true;
-      continue;
-    }
-  }
-  bookInfo.summary = summary.join(" ").trim();
-  return bookInfo;
-  //console.log(lines);
-}
-
 //! - TYPE
 type FirstPassObj = {
   basePath: string;
@@ -205,50 +77,72 @@ type FirstPassObj = {
   dirCount: number;
   audioFileCount: number;
   textFileCount: number;
+  folderImages: string[];
   dirArray: string[];
   bookInfo: BookInfo;
 };
+/**
+ * no = do not query google
+ * yes = query google IF no google data found in folders metadata json file
+ * force = query google regardless of precense in metadata json file
+ */
+type QueryGoogle = "no" | "yes" | "force";
+
 //--======================================================
-//-- Recursive Walk Function
+//-- Recursive Walk Function to write Metadata file
+//-- In each directory.  Return
 //--======================================================
-export async function walkDir(dir, dirArray = [], fileArray = []) {
+export async function walkAndTagDirs(
+  dir: string,
+  queryGoogle?: QueryGoogle,
+  dirArray?: string[],
+  folderMetadataArray?: FolderMetadata[]
+): Promise<{
+  queryGoogle: QueryGoogle;
+  dirArray: string[];
+  folderMetadataArray: FolderMetadata[];
+}>;
+export async function walkAndTagDirs(
+  dir: string,
+  queryGoogle: QueryGoogle = "no",
+  dirArray: string[] = [],
+  folderMetadataArray: FolderMetadata[] = []
+) {
   // Read the directory passed (probably need a check or error handling if not a dir passed)
   const files = fs.readdirSync(dir);
-  // setup Vars to accumulate stats
   let terminalDirFlag = false;
-  let ext = "";
-  // let fileName = "NOT FOUND"; //path.basename(files[i]);
-  let directDirName = formatPath(dir);
-  let baseName = path.basename(dir);
-  let {
-    folderBookAuthor,
-    folderBookTitle,
-    folderBookCategory,
-    folderBookYear,
+  const directDirName = formatPath(dir);
+  const baseName = path.basename(dir);
+  const currentMetadata: { googleData: GoogleData; wasGoogleQueried: boolean } =
+    { googleData: undefined, wasGoogleQueried: false };
+  const {
+    id: folderId,
+    author: folderBookAuthor,
+    title: folderBookTitle,
+    category: folderBookCategory,
+    year: folderBookYear,
   } = parseFolderName(path.basename(dir));
-  // let dirNameParsed = parseDirName(path.basename(dir));
-  // const bookTitle = dirNameParsed.bookTitle;
-  // const bookCategory = dirNameParsed.bookCategory;
-  let bookInfo = {};
-  // console.log("files", files);
 
   //-- First loop does NOT recurse, but builds info
   //-- and sets terminalDirFlag (no more recursing)
-
   let firstPassObj: FirstPassObj = {
     basePath: directDirName,
     baseName: baseName,
     dirCount: 0,
     audioFileCount: 0,
     textFileCount: 0,
+    folderImages: [],
     dirArray: [],
     bookInfo: {},
   };
+  //~ ---------------------------------
+  //~ First Pass Start  ---------------
+  //~ ---------------------------------
   for (let i = 0; i < files.length; i++) {
     const fileName = files[i];
     const dirPath = path.join(dir, files[i]);
     const isDir = fs.statSync(dirPath).isDirectory();
-    ext = path.extname(files[i]);
+    const ext = path.extname(files[i]);
 
     //--assign to dirArray if in directory
     if (isDir) {
@@ -263,18 +157,30 @@ export async function walkDir(dir, dirArray = [], fileArray = []) {
     if (ext === ".txt" && fileName.toLowerCase().includes("downloaded from")) {
       fs.unlinkSync(dirPath);
     }
-    //-- if txt file and has title extracted from folder then process as info file
+
+    //-- if txt file and has part of the author extracted from folder then process as info file
     if (
       ext === ".txt" &&
-      fileName.toLowerCase().includes(folderBookTitle.toLowerCase())
+      fileName
+        .toLowerCase()
+        .includes(folderBookAuthor.toLowerCase().slice(0, 4))
     ) {
       firstPassObj.textFileCount = firstPassObj.textFileCount + 1;
       firstPassObj.bookInfo = parseBookInfoText(dirPath);
     }
     if (ext === ".json" && fileName.toLowerCase().includes("-metadata")) {
-      console.log("found Metadata", fileName);
+      currentMetadata.googleData = getMetadataFromFile(dirPath);
+    }
+
+    //-- store images in file
+    if (IMAGEFORMATS.some((el) => el === ext)) {
+      firstPassObj.folderImages.push(fileName);
     }
   }
+  //~ ---------------------------------
+  //~ First Pass END ------------------
+  //~ ---------------------------------
+
   // console.log("firstPassObj", firstPassObj);
   // Is the directory we just read an Audio book directory?
   // dirCount is zero or audiobook file count > 0
@@ -286,53 +192,41 @@ export async function walkDir(dir, dirArray = [], fileArray = []) {
   //    filename - {bookTitle}-{bookAuthor}-metadata.json
   if (firstPassObj.dirCount === 0 || firstPassObj.audioFileCount > 0) {
     terminalDirFlag = true;
-    const googleData = await fakeGetBookData(folderBookAuthor, folderBookTitle);
-    const googleISBNS =
-      googleData?.isbn &&
-      googleData?.isbn.reduce((final, el) => {
-        return { ...final, [el.type]: el.identifier };
-      }, {});
-    console.log("IN FILE Array - Terminal Dir Flag", terminalDirFlag);
+    let googleData;
+    // if query flag true AND we didn't already find populated google data, then query
+    // else keep same
+    if (
+      (queryGoogle === "yes" && !currentMetadata.googleData) ||
+      queryGoogle === "force"
+    ) {
+      googleData = await getBookData(folderBookAuthor, folderBookTitle);
+      currentMetadata.wasGoogleQueried = true;
+    } else {
+      googleData = currentMetadata.googleData || {};
+      currentMetadata.wasGoogleQueried = false;
+    }
+
+    // console.log("IN FILE Array - Terminal Dir Flag", terminalDirFlag);
     // This file will be written to the title-author-metadata.json file in the
     // audio book directory
-    const folderMetaData = {
+    const folderMetadata: FolderMetadata = {
+      id: folderId,
       folderName: firstPassObj.baseName,
       fullPath: firstPassObj.basePath,
       audioFileCount: firstPassObj.audioFileCount,
       textFileCount: firstPassObj.textFileCount,
       infoFileData: firstPassObj.bookInfo,
+      folderImages: firstPassObj.folderImages,
       folderNameData: {
         title: folderBookTitle,
         publishedYear: folderBookYear,
         author: folderBookAuthor,
         category: folderBookCategory,
       },
-      googleAPIData: {
-        query: googleData?.query,
-        image: googleData?.imageURL,
-        authors: googleData?.authors,
-        title: googleData?.googleTitle,
-        subtitle: googleData?.subTitle,
-        description: googleData?.description,
-        publisher: googleData?.publisher,
-        publishedDate: googleData?.publishedDate, //"YYYY-MM"
-        ...googleISBNS,
-        pageCount: googleData?.pageCount,
-        categories: googleData?.categories,
-      },
+      googleAPIData: googleData,
     };
-    const metaDataObj = {
-      baseName: firstPassObj.baseName,
-      fullPath: firstPassObj.basePath,
-      audioFileCount: firstPassObj.audioFileCount,
-      textFileCount: firstPassObj.textFileCount,
-      ...firstPassObj.bookInfo,
-      category: folderBookCategory,
-      bookTitleDir: folderBookTitle,
-      bookYearDir: folderBookYear,
-      bookAuthorDir: folderBookAuthor,
-    };
-    fileArray.push(metaDataObj);
+
+    folderMetadataArray.push(folderMetadata);
 
     // Construct filename for metadata
     const outTitle = folderBookTitle;
@@ -346,34 +240,75 @@ export async function walkDir(dir, dirArray = [], fileArray = []) {
     const outFilename = tempFilename.replace(re, "_");
     fs.writeFileSync(
       `${firstPassObj.basePath}/${outTitle}-${outAuthor}-metadata.json`,
-      JSON.stringify(folderMetaData)
+      JSON.stringify(folderMetadata)
+    );
+    // Console output the status
+    console.log(
+      chalk.cyan(outFilename),
+      " - Processed ",
+      chalk.bgCyan(currentMetadata.wasGoogleQueried ? " !Google Queried!" : "")
     );
   }
 
   if (terminalDirFlag) {
-    return { dirArray, fileArray };
+    return { queryGoogle, dirArray, folderMetadataArray };
   }
   //! Loop only using the FirstPassObj
   const firstPassDirs = firstPassObj.dirArray;
+
   for (let i = 0; i < firstPassDirs.length; i++) {
     if (firstPassDirs[i]) {
-      // console.log("FirsPass DIR", firstPassDirs[i].dirPath);
       const dirPath = firstPassDirs[i];
+      // dirArray.push({
+      //   path: formatPath(dirPath),
+      //   dirCount: firstPassObj.dirCount,
+      //   baseDir: firstPassObj.baseName,
+      // });
+      // dirLog = { ...dirLog, dirObj };
       dirArray.push(formatPath(dirPath));
-      walkDir(dirPath, dirArray, fileArray);
+      await walkAndTagDirs(dirPath, queryGoogle, dirArray, folderMetadataArray);
     }
   }
 
-  return { dirArray, fileArray };
+  return { queryGoogle, dirArray, folderMetadataArray };
 
   //! END FIRST PASS RECURSE LOOP
 }
 
-fakeGetBookData("Mark McCoid", "Millions with Crypto").then((res) =>
-  console.log(res)
-);
-// const dir = "C:/localStuff/demonoid/AudioBooks/Test";
-const dir = "C:/localStuff/demonoid/AudioBooks/Test/SciFi";
+//--======================================================
+//-- Recursive Walk Function to write Metadata file
+//-- In each directory.  Return
+//--======================================================
+export function walkAndAggrMetadata(
+  dir: string,
+  dirArray?: string[],
+  folderMetadataArray?: Record<string, string>[]
+): {
+  dirArray: string[];
+  folderMetadataArray: Record<string, string>[];
+};
+export function walkAndAggrMetadata(
+  dir,
+  dirArray = [],
+  folderMetadataArray = []
+) {
+  const files = fs.readdirSync(dir);
+  for (let i = 0; i < files.length; i++) {
+    const fileName = files[i];
+    const dirPath = path.join(dir, files[i]);
+    const isDir = fs.statSync(dirPath).isDirectory();
+    const ext = path.extname(files[i]);
 
-const output = walkDir(dir);
-fs.writeFileSync(`working.json`, JSON.stringify(output));
+    if (isDir) {
+      walkAndAggrMetadata(dirPath, dirArray, folderMetadataArray);
+    }
+
+    if (ext === ".json" && fileName.toLowerCase().includes("-metadata")) {
+      const metadata: FolderMetadata = JSON.parse(
+        fs.readFileSync(dirPath, "utf8")
+      );
+      folderMetadataArray.push(metadata);
+    }
+  }
+  return { dirArray, folderMetadataArray };
+}
