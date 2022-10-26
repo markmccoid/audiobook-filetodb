@@ -45,6 +45,7 @@ export type FolderMetadata = {
   fullPath: string;
   audioFileCount: number;
   textFileCount: number;
+  dirCount: number;
   infoFileData: BookInfo;
   folderImages: string[];
   folderNameData: {
@@ -183,14 +184,18 @@ export async function walkAndTagDirs(
 
   // console.log("firstPassObj", firstPassObj);
   // Is the directory we just read an Audio book directory?
-  // dirCount is zero or audiobook file count > 0
+  // dirCount is zero OR audiobook file count > 0 OR bookInfo is populated
   // If so :
   // 1. Set "terminalDirFlag" so that we don't recurse even if directories in the dirArray
   // 2. Create Object with info about book in directory
   // 3. Push that onto the fileArray (will build a final array of books)
   // 4. Create/Write a json book metadata file in the current directory
   //    filename - {bookTitle}-{bookAuthor}-metadata.json
-  if (firstPassObj.dirCount === 0 || firstPassObj.audioFileCount > 0) {
+  if (
+    firstPassObj.dirCount === 0 ||
+    firstPassObj.audioFileCount > 0 ||
+    Object.keys(firstPassObj.bookInfo).length > 0
+  ) {
     terminalDirFlag = true;
     let googleData;
     // if query flag true AND we didn't already find populated google data, then query
@@ -216,6 +221,7 @@ export async function walkAndTagDirs(
       audioFileCount: firstPassObj.audioFileCount,
       textFileCount: firstPassObj.textFileCount,
       infoFileData: firstPassObj.bookInfo,
+      dirCount: firstPassObj.dirCount,
       folderImages: firstPassObj.folderImages,
       folderNameData: {
         title: folderBookTitle,
@@ -311,4 +317,23 @@ export function walkAndAggrMetadata(
     }
   }
   return { dirArray, folderMetadataArray };
+}
+
+export function writeAggrMetaData(
+  dir: string,
+  absPath?: string,
+  filename?: string
+): string;
+export function writeAggrMetaData(
+  dir,
+  absPath,
+  filename = "audioBookMetadata.json"
+) {
+  const res = walkAndAggrMetadata(dir);
+
+  fs.writeFileSync(
+    path.join(absPath || dir, filename),
+    JSON.stringify(res.folderMetadataArray)
+  );
+  return "Success";
 }

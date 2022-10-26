@@ -98,6 +98,7 @@ export function parseFolderName(folderName: string) {
 export type BookInfo = {
   summary?: string;
   length?: string;
+  title?: string;
   author?: string;
   narratedBy?: string;
   releaseDate?: string;
@@ -120,6 +121,13 @@ export function parseBookInfoText(textFile) {
       continue;
     }
     const lowercaseLine = line.toLowerCase();
+    //-- Title Of Book
+    if (lowercaseLine.includes("title:")) {
+      bookInfo.title = line
+        .slice(line.toLowerCase().indexOf("title:") + 6)
+        .trim();
+      continue;
+    }
     //-- Length Of Book
     if (lowercaseLine.includes("length:")) {
       bookInfo.length = line
