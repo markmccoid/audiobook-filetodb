@@ -7,8 +7,8 @@ import {
 } from "./audiobook-walkdir";
 
 // const dir = "D:/Dropbox/Mark/myAudioBooks";
-const dir = "D:/Dropbox/Mark/myAudioBooks/NonFiction";
-walkAndTagDirs(dir, "yes");
+// const dir = "D:/Dropbox/Mark/myAudioBooks/NonFiction";
+// walkAndTagDirs(dir, "yes");
 
 //! TODO
 /**

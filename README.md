@@ -22,7 +22,7 @@ const dir = "C:/localStuff/demonoid/AudioBooks";
 //   JSON.stringify(res.folderMetadataArray)
 // );
 
-// walkDir returns a promise, we must THEN it.
+// walkAndTagDirs returns a promise, we must THEN it.
 walkAndTagDirs(dir, "yes", [], []).then((res) => {
   fs.writeFileSync(
     path.join(dir, "directoryArray.json"),
