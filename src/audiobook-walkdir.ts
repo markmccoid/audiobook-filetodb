@@ -94,9 +94,15 @@ type QueryGoogle = "no" | "yes" | "force";
 //-- In each directory.  Return
 //--======================================================
 export async function walkAndTagDirs(
+  // Directory to start at
   dir: string,
+  // "no" | "yes" | "force" default "no"
+  // Should we query google? "yes" will only query google if folder's metadata DOES NOT
+  // have any google info.  "force" will force a search regardless of data in metadata json file
   queryGoogle?: QueryGoogle,
+  // Used in recursion (do not pass when calling)
   dirArray?: string[],
+  // Used in recursion (do not pass when calling)
   folderMetadataArray?: FolderMetadata[]
 ): Promise<{
   queryGoogle: QueryGoogle;
@@ -321,18 +327,18 @@ export function walkAndAggrMetadata(
 
 export function writeAggrMetaData(
   dir: string,
-  absPath?: string,
-  filename?: string
+  outputPath?: string,
+  outputFilename?: string
 ): string;
 export function writeAggrMetaData(
   dir,
-  absPath,
-  filename = "audioBookMetadata.json"
+  outputPath,
+  outputFilename = "audioBookMetadata.json"
 ) {
   const res = walkAndAggrMetadata(dir);
 
   fs.writeFileSync(
-    path.join(absPath || dir, filename),
+    path.join(outputPath || dir, outputFilename),
     JSON.stringify(res.folderMetadataArray)
   );
   return "Success";

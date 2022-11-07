@@ -6,6 +6,7 @@
   "scripts": {
     "start": "ts-node ./src/index.ts",
     "musicwalk": "ts-node ./src/music-walkdir.ts",
+    "walkentry": "ts-node ./src/walkentry.ts",
     "start:dev": "nodemon",
     "build": "rimraf ./build && tsc",
     "test": "echo \"Error: no test specified\" && exit 1"

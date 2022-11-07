@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-async function musicWalkerWithSongs(
+export async function musicWalkerWithSongs(
   dir: string,
   currDepth: number = 0, // If you want to start at different level you can send -1
   artistsArray: string[] = [],
@@ -94,17 +94,19 @@ async function musicWalkerWithSongs(
 }
 //~ ------------------------------------------------
 //~ ------------------------------------------------
-async function musicWalker(
+export async function musicWalker(
   dir: string,
   currDepth: number = 0,
   artistsArray: string[] = [],
   // artistAlbums: { artist: string; albums: string[] }[] = [],
   artistAlbums: {
+    levelZero?: string;
     artist: string;
     albums: string[];
   }[] = [],
   currArtist: string = "",
-  currAlbum: string = ""
+  currAlbum: string = "",
+  currLevelZero: string = ""
 ) {
   const files = fs.readdirSync(dir);
   const baseName = path.basename(dir);
@@ -112,15 +114,23 @@ async function musicWalker(
 
   currDepth = currDepth + 1;
   let aggrAlbums = [];
-  let aggrSongs = [];
+  console.log(
+    `${"-".repeat(
+      currDepth * 2
+    )} Depth: ${currDepth} Folder: ${currLevelZero}-${currArtist}-${currAlbum}`
+  );
+
   for (let i = 0; i < files.length; i++) {
     const fileName = files[i];
     const dirPath = path.join(dir, files[i]);
     const isDir = fs.statSync(dirPath).isDirectory();
     const ext = path.extname(files[i]);
-    //  console.log("filename", fileName, currDepth);
+    // console.log("filename", fileName, currDepth);
     if (currDepth > 2) {
       return { artists: artistsArray, albums: artistAlbums };
+    }
+    if (currDepth === 0 && isDir) {
+      currLevelZero = fileName;
     }
     if (currDepth === 1 && isDir) {
       // Artist directory
@@ -142,7 +152,8 @@ async function musicWalker(
         artistsArray,
         artistAlbums,
         currArtist,
-        currAlbum
+        currAlbum,
+        currLevelZero
       );
     }
   }
@@ -150,6 +161,7 @@ async function musicWalker(
   // artistAlbums.push({ artist: currArtist, albums: aggrAlbums });
   if (currDepth === 2) {
     artistAlbums.push({
+      levelZero: currLevelZero,
       artist: currArtist,
       albums: aggrAlbums,
     });
@@ -163,13 +175,13 @@ async function musicWalker(
 
 //C:/localStuff/musictest
 //D:/Dropbox/Mark/myMusic/Ambient
-musicWalker("D:/Dropbox/Mark/myMusic/", -1).then((res) => {
-  fs.writeFileSync(
-    "C:/localStuff/musictest/music-data.json",
-    JSON.stringify(res)
-  );
-  console.log(res);
-});
+// musicWalker("D:/Dropbox/Mark/myMusic/", -1).then((res) => {
+//   fs.writeFileSync(
+//     "C:/localStuff/musictest/music-data.json",
+//     JSON.stringify(res)
+//   );
+//   console.log(res);
+// });
 
 //-- -=========================================
 //-- Passing -1 for currDept so that we don't "start" until

@@ -121,14 +121,16 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
         //~ ---------------------------------
         // console.log("firstPassObj", firstPassObj);
         // Is the directory we just read an Audio book directory?
-        // dirCount is zero or audiobook file count > 0
+        // dirCount is zero OR audiobook file count > 0 OR bookInfo is populated
         // If so :
         // 1. Set "terminalDirFlag" so that we don't recurse even if directories in the dirArray
         // 2. Create Object with info about book in directory
         // 3. Push that onto the fileArray (will build a final array of books)
         // 4. Create/Write a json book metadata file in the current directory
         //    filename - {bookTitle}-{bookAuthor}-metadata.json
-        if (firstPassObj.dirCount === 0 || firstPassObj.audioFileCount > 0) {
+        if (firstPassObj.dirCount === 0 ||
+            firstPassObj.audioFileCount > 0 ||
+            Object.keys(firstPassObj.bookInfo).length > 0) {
             terminalDirFlag = true;
             let googleData;
             // if query flag true AND we didn't already find populated google data, then query
@@ -152,6 +154,7 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
                 audioFileCount: firstPassObj.audioFileCount,
                 textFileCount: firstPassObj.textFileCount,
                 infoFileData: firstPassObj.bookInfo,
+                dirCount: firstPassObj.dirCount,
                 folderImages: firstPassObj.folderImages,
                 folderNameData: {
                     title: folderBookTitle,
@@ -216,9 +219,9 @@ function walkAndAggrMetadata(dir, dirArray = [], folderMetadataArray = []) {
     return { dirArray, folderMetadataArray };
 }
 exports.walkAndAggrMetadata = walkAndAggrMetadata;
-function writeAggrMetaData(dir, path, filename = "audioBookMetadata.json") {
+function writeAggrMetaData(dir, outputPath, outputFilename = "audioBookMetadata.json") {
     const res = walkAndAggrMetadata(dir);
-    fs_1.default.writeFileSync(path.join(path || dir, filename), JSON.stringify(res.folderMetadataArray));
+    fs_1.default.writeFileSync(path_1.default.join(outputPath || dir, outputFilename), JSON.stringify(res.folderMetadataArray));
     return "Success";
 }
 exports.writeAggrMetaData = writeAggrMetaData;
