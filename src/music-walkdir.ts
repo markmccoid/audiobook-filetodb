@@ -137,9 +137,14 @@ export async function musicWalker(
       artistsArray.push(fileName);
       currArtist = fileName;
     }
-    if (currDepth === 2 && isDir) {
-      // Album directory
-      aggrAlbums.push(fileName);
+    if (currDepth === 2) {
+      if (isDir) {
+        // Album directory
+        aggrAlbums.push(fileName);
+      } else {
+        aggrAlbums.push(path.basename(fileName, ext));
+      }
+
       currAlbum = fileName;
       // albums.push({ artist: currArtist, album: fileName });
     }
