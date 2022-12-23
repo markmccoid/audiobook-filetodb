@@ -45,8 +45,9 @@ const path_1 = __importDefault(require("path"));
 const chalk_1 = __importDefault(require("chalk"));
 const parsers_1 = require("./parsers");
 const fetchData_1 = require("./fetchData");
+const audiobook_createCleanFile_1 = require("./audiobook-createCleanFile");
 //-- Local contants
-const AUDIOFORMATS = [".mp3", ".mb4", ".mp4"];
+const AUDIOFORMATS = [".mp3", ".mb4", ".mp4", ".m4a"];
 const IMAGEFORMATS = [".jpg", ".png"];
 /**
  * Convert the passed dirPath to use the passed pathSep
@@ -219,9 +220,13 @@ function walkAndAggrMetadata(dir, dirArray = [], folderMetadataArray = []) {
     return { dirArray, folderMetadataArray };
 }
 exports.walkAndAggrMetadata = walkAndAggrMetadata;
-function writeAggrMetaData(dir, outputPath, outputFilename = "audioBookMetadata.json") {
+function writeAggrMetaData(dir, outputPath, outputFilename = "audioBookMetadata.json", createCleanFileFlag = false) {
     const res = walkAndAggrMetadata(dir);
     fs_1.default.writeFileSync(path_1.default.join(outputPath || dir, outputFilename), JSON.stringify(res.folderMetadataArray));
+    if (createCleanFileFlag) {
+        const cleanFile = (0, audiobook_createCleanFile_1.createCleanFile)(res.folderMetadataArray);
+        fs_1.default.writeFileSync(path_1.default.join(outputPath || dir, `clean-${outputFilename}`), JSON.stringify(cleanFile));
+    }
     return "Success";
 }
 exports.writeAggrMetaData = writeAggrMetaData;

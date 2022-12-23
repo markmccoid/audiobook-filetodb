@@ -38,6 +38,7 @@ import {
 import { getBookData, fakeGetBookData } from "./fetchData";
 import type { BookInfo } from "./parsers";
 import type { GoogleData } from "./fetchData";
+import { createCleanFile } from "./audiobook-createCleanFile";
 
 export type FolderMetadata = {
   id: string;
@@ -58,7 +59,7 @@ export type FolderMetadata = {
 };
 
 //-- Local contants
-const AUDIOFORMATS = [".mp3", ".mb4", ".mp4"];
+const AUDIOFORMATS = [".mp3", ".mb4", ".mp4", ".m4a"];
 const IMAGEFORMATS = [".jpg", ".png"];
 /**
  * Convert the passed dirPath to use the passed pathSep
@@ -120,6 +121,7 @@ export async function walkAndTagDirs(
   let terminalDirFlag = false;
   const directDirName = formatPath(dir);
   const baseName = path.basename(dir);
+
   const currentMetadata: { googleData: GoogleData; wasGoogleQueried: boolean } =
     { googleData: undefined, wasGoogleQueried: false };
   const {
@@ -142,6 +144,7 @@ export async function walkAndTagDirs(
     dirArray: [],
     bookInfo: {},
   };
+
   //~ ---------------------------------
   //~ First Pass Start  ---------------
   //~ ---------------------------------
@@ -294,10 +297,10 @@ export async function walkAndTagDirs(
 export function walkAndAggrMetadata(
   dir: string,
   dirArray?: string[],
-  folderMetadataArray?: Record<string, string>[]
+  folderMetadataArray?: FolderMetadata[] //Record<string, string>[]
 ): {
   dirArray: string[];
-  folderMetadataArray: Record<string, string>[];
+  folderMetadataArray: FolderMetadata[]; //Record<string, string>[];
 };
 export function walkAndAggrMetadata(
   dir,
@@ -325,15 +328,20 @@ export function walkAndAggrMetadata(
   return { dirArray, folderMetadataArray };
 }
 
+//-------------------------------------
+//-- writeAggrMetaData
+//-------------------------------------
 export function writeAggrMetaData(
   dir: string,
   outputPath?: string,
-  outputFilename?: string
+  outputFilename?: string,
+  createCleanFileFlag?: boolean
 ): string;
 export function writeAggrMetaData(
   dir,
   outputPath,
-  outputFilename = "audioBookMetadata.json"
+  outputFilename = "audioBookMetadata.json",
+  createCleanFileFlag = false
 ) {
   const res = walkAndAggrMetadata(dir);
 
@@ -341,5 +349,12 @@ export function writeAggrMetaData(
     path.join(outputPath || dir, outputFilename),
     JSON.stringify(res.folderMetadataArray)
   );
+  if (createCleanFileFlag) {
+    const cleanFile = createCleanFile(res.folderMetadataArray);
+    fs.writeFileSync(
+      path.join(outputPath || dir, `clean-${outputFilename}`),
+      JSON.stringify(cleanFile)
+    );
+  }
   return "Success";
 }

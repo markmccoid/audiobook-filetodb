@@ -9,6 +9,8 @@ const runType = process.argv[2];
 //-- ---------------------------------------------------------
 //-- Music Walker Entry
 //-- walkentry {type} {starting directory} {output location} {output filename} {starting depth (optional)}
+//--        starting depth should be 0 if artist dir in the starting dir (startingDir/artist1, startingDir/artist2, etc)
+//--        starting depth should be -1 if there is a "genre" folder before artists (startingDir/genre1/artist1, startingDir/genre1/artist2, etc)
 //-- ---------------------------------------------------------
 if (runType === "music") {
   if (process.argv.length <= 4) {
@@ -59,11 +61,12 @@ if (runType === "audiobook") {
   const callGoogleApi = process?.argv[7];
   if (!isAggrOnly) {
     walkAndTagDirs(startingDir, callGoogleApi).then((res) => {
-      writeAggrMetaData(startingDir, outputPath, outputFile);
+      writeAggrMetaData(startingDir, outputPath, outputFile, true);
       console.log(`Data written to ${path.join(outputPath, outputFile)}`);
     });
   } else {
-    writeAggrMetaData(startingDir, outputPath, outputFile);
+    // The last param (true) is telling it to create a "clean" data file also
+    writeAggrMetaData(startingDir, outputPath, outputFile, true);
     console.log(`Data written to ${path.join(outputPath, outputFile)}`);
   }
 }
