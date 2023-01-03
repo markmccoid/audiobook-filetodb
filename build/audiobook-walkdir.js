@@ -60,9 +60,13 @@ function formatPath(dirPath, pathSep = "/") {
     return pathArray.join(pathSep);
 }
 function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataArray = []) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         // Read the directory passed (probably need a check or error handling if not a dir passed)
-        const files = fs_1.default.readdirSync(dir);
+        // Exclude any files or directories that have "_ignore" in them.
+        const files = fs_1.default
+            .readdirSync(dir)
+            .filter((file) => !file.toLowerCase().includes("_ignore"));
         let terminalDirFlag = false;
         const directDirName = formatPath(dir);
         const baseName = path_1.default.basename(dir);
@@ -88,6 +92,11 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
             const dirPath = path_1.default.join(dir, files[i]);
             const isDir = fs_1.default.statSync(dirPath).isDirectory();
             const ext = path_1.default.extname(files[i]);
+            // if (fileName.includes("Other_")) {
+            //   console.log("Other found", fileName, dirPath);
+            //   terminalDirFlag = true;
+            //   break;
+            // }
             //--assign to dirArray if in directory
             if (isDir) {
                 firstPassObj.dirCount = firstPassObj.dirCount + 1;
@@ -131,7 +140,8 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
         //    filename - {bookTitle}-{bookAuthor}-metadata.json
         if (firstPassObj.dirCount === 0 ||
             firstPassObj.audioFileCount > 0 ||
-            Object.keys(firstPassObj.bookInfo).length > 0) {
+            Object.keys(firstPassObj.bookInfo).length > 0 ||
+            ((_a = firstPassObj.bookInfo) === null || _a === void 0 ? void 0 : _a.stopFlag)) {
             terminalDirFlag = true;
             let googleData;
             // if query flag true AND we didn't already find populated google data, then query
@@ -198,7 +208,6 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
             }
         }
         return { queryGoogle, dirArray, folderMetadataArray };
-        //! END FIRST PASS RECURSE LOOP
     });
 }
 exports.walkAndTagDirs = walkAndTagDirs;
@@ -220,11 +229,11 @@ function walkAndAggrMetadata(dir, dirArray = [], folderMetadataArray = []) {
     return { dirArray, folderMetadataArray };
 }
 exports.walkAndAggrMetadata = walkAndAggrMetadata;
-function writeAggrMetaData(dir, outputPath, outputFilename = "audioBookMetadata.json", createCleanFileFlag = false) {
+function writeAggrMetaData(dir, outputPath, outputFilename = "audioBookMetadata.json", createCleanFileFlag = false, depthToCategory = undefined) {
     const res = walkAndAggrMetadata(dir);
     fs_1.default.writeFileSync(path_1.default.join(outputPath || dir, outputFilename), JSON.stringify(res.folderMetadataArray));
     if (createCleanFileFlag) {
-        const cleanFile = (0, audiobook_createCleanFile_1.createCleanFile)(res.folderMetadataArray);
+        const cleanFile = (0, audiobook_createCleanFile_1.createCleanFile)(res.folderMetadataArray, depthToCategory);
         fs_1.default.writeFileSync(path_1.default.join(outputPath || dir, `clean-${outputFilename}`), JSON.stringify(cleanFile));
     }
     return "Success";

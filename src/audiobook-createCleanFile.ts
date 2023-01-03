@@ -16,6 +16,8 @@ export type CleanAudioBookData = {
   imageURL?: string;
   categories: string[];
   pathDirArray: string[];
+  pathPrimaryCat: string;
+  pathSecondaryCat: string;
 };
 
 //--------------------------------------------
@@ -24,7 +26,7 @@ export type CleanAudioBookData = {
 //-- c:/nonfiction/weath/booktitle
 //-- returns ["nonfiction", "wealth"]
 //--------------------------------------------
-function extractDirectories(dir: string) {
+function extractDirectories(dir: string, depthToCategory) {
   let extractedDirs = [];
   // Loop and extract directory one at time till end
   while (true) {
@@ -43,13 +45,17 @@ function extractDirectories(dir: string) {
 
     dir = dir.slice(index + 1); //dir.slice(dir.indexOf("/")+1).slice(dir.indexOf("/"))
   }
-  return extractedDirs;
+  return {
+    allDirs: extractedDirs,
+    primaryDirCat: extractedDirs[depthToCategory - 1],
+    secondaryDirCat: extractedDirs[depthToCategory],
+  };
 }
 
 export function createCleanFile(
-  baseData: FolderMetadata[]
+  baseData: FolderMetadata[],
+  depthToCategory?: number
 ): CleanAudioBookData[] {
-  console.log("in clean", baseData.length, baseData[0]);
   return baseData.map((book) => {
     // decide on data for fields that come from multiple sources
     // if infoFileData available use it for the following:
@@ -75,7 +81,7 @@ export function createCleanFile(
       ...(book.googleAPIData?.categories || []),
       ...(book.infoFileData?.otherCategories || []),
     ].filter((el) => el);
-
+    const directories = extractDirectories(book.fullPath, depthToCategory);
     return {
       id: book.id,
       fullPath: book.fullPath,
@@ -91,7 +97,9 @@ export function createCleanFile(
       pageCount: parseInt(book.googleAPIData?.pageCount) || undefined,
       imageURL,
       categories: Array.from(new Set(categories)),
-      pathDirArray: extractDirectories(book.fullPath),
+      pathDirArray: directories.allDirs,
+      pathPrimaryCat: directories.primaryDirCat,
+      pathSecondaryCat: directories.secondaryDirCat,
     };
   });
 }

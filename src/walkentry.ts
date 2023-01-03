@@ -1,3 +1,5 @@
+import { aggregateMetadata } from "./audiobook-metadataAggr";
+
 const { musicWalker } = require("./music-walkdir");
 const { walkAndTagDirs, writeAggrMetaData } = require("./audiobook-walkdir");
 const fs = require("fs");
@@ -50,6 +52,7 @@ if (runType === "audiobook") {
                     aggr only = "yes" | "no"
                     ...
                     call google api = "yes" | "no" | "force"
+                    depthToCategory -> this is number of dirs before we hit the primary category, if let blank, don't calc primary/secondary dirs
       `
     );
     process.exit(-1);
@@ -59,18 +62,48 @@ if (runType === "audiobook") {
   let outputFile = process.argv[5];
   const startingDir = process?.argv[6];
   const callGoogleApi = process?.argv[7];
+  const depthToCategory = parseInt(process?.argv[8]) || undefined;
+
   if (!isAggrOnly) {
     walkAndTagDirs(startingDir, callGoogleApi).then((res) => {
-      writeAggrMetaData(startingDir, outputPath, outputFile, true);
+      writeAggrMetaData(
+        startingDir,
+        outputPath,
+        outputFile,
+        true,
+        depthToCategory
+      );
       console.log(`Data written to ${path.join(outputPath, outputFile)}`);
     });
   } else {
     // The last param (true) is telling it to create a "clean" data file also
-    writeAggrMetaData(startingDir, outputPath, outputFile, true);
+    writeAggrMetaData(
+      startingDir,
+      outputPath,
+      outputFile,
+      true,
+      depthToCategory
+    );
     console.log(`Data written to ${path.join(outputPath, outputFile)}`);
   }
 }
 
+if (runType === "metadata") {
+  if (process.argv.length < 4) {
+    console.log(
+      `Usage: \n __filename {type} {aggr input-output location} {aggr input filename}`
+    );
+    process.exit(-1);
+  }
+  const inOutPath = process.argv[3];
+  const inOutName = process.argv[4];
+
+  const metaData = aggregateMetadata(inOutPath, inOutName);
+  fs.writeFileSync(
+    path.join(inOutPath, "bookMetadata.json"),
+    JSON.stringify(metaData)
+  );
+}
 // C:/localStuff/musictest
 // D:/Dropbox/Mark/myObsidian/Music/_templaterScripts
 // // Store the starting directory

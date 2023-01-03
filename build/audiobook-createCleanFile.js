@@ -7,7 +7,7 @@ exports.createCleanFile = void 0;
 //-- c:/nonfiction/weath/booktitle
 //-- returns ["nonfiction", "wealth"]
 //--------------------------------------------
-function extractDirectories(dir) {
+function extractDirectories(dir, depthToCategory) {
     let extractedDirs = [];
     // Loop and extract directory one at time till end
     while (true) {
@@ -25,10 +25,13 @@ function extractDirectories(dir) {
         extractedDirs.push(dir.slice(index + 1, nextIndex));
         dir = dir.slice(index + 1); //dir.slice(dir.indexOf("/")+1).slice(dir.indexOf("/"))
     }
-    return extractedDirs;
+    return {
+        allDirs: extractedDirs,
+        primaryDirCat: extractedDirs[depthToCategory - 1],
+        secondaryDirCat: extractedDirs[depthToCategory],
+    };
 }
-function createCleanFile(baseData) {
-    console.log("in clean", baseData.length, baseData[0]);
+function createCleanFile(baseData, depthToCategory) {
     return baseData.map((book) => {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
         // decide on data for fields that come from multiple sources
@@ -50,6 +53,7 @@ function createCleanFile(baseData) {
             ...(((_s = book.googleAPIData) === null || _s === void 0 ? void 0 : _s.categories) || []),
             ...(((_t = book.infoFileData) === null || _t === void 0 ? void 0 : _t.otherCategories) || []),
         ].filter((el) => el);
+        const directories = extractDirectories(book.fullPath, depthToCategory);
         return {
             id: book.id,
             fullPath: book.fullPath,
@@ -65,7 +69,9 @@ function createCleanFile(baseData) {
             pageCount: parseInt((_x = book.googleAPIData) === null || _x === void 0 ? void 0 : _x.pageCount) || undefined,
             imageURL,
             categories: Array.from(new Set(categories)),
-            pathDirArray: extractDirectories(book.fullPath),
+            pathDirArray: directories.allDirs,
+            pathPrimaryCat: directories.primaryDirCat,
+            pathSecondaryCat: directories.secondaryDirCat,
         };
     });
 }

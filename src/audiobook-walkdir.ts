@@ -117,7 +117,10 @@ export async function walkAndTagDirs(
   folderMetadataArray: FolderMetadata[] = []
 ) {
   // Read the directory passed (probably need a check or error handling if not a dir passed)
-  const files = fs.readdirSync(dir);
+  // Exclude any files or directories that have "_ignore" in them.
+  const files = fs
+    .readdirSync(dir)
+    .filter((file) => !file.toLowerCase().includes("_ignore"));
   let terminalDirFlag = false;
   const directDirName = formatPath(dir);
   const baseName = path.basename(dir);
@@ -154,6 +157,11 @@ export async function walkAndTagDirs(
     const isDir = fs.statSync(dirPath).isDirectory();
     const ext = path.extname(files[i]);
 
+    // if (fileName.includes("Other_")) {
+    //   console.log("Other found", fileName, dirPath);
+    //   terminalDirFlag = true;
+    //   break;
+    // }
     //--assign to dirArray if in directory
     if (isDir) {
       firstPassObj.dirCount = firstPassObj.dirCount + 1;
@@ -203,7 +211,8 @@ export async function walkAndTagDirs(
   if (
     firstPassObj.dirCount === 0 ||
     firstPassObj.audioFileCount > 0 ||
-    Object.keys(firstPassObj.bookInfo).length > 0
+    Object.keys(firstPassObj.bookInfo).length > 0 ||
+    firstPassObj.bookInfo?.stopFlag
   ) {
     terminalDirFlag = true;
     let googleData;
@@ -335,13 +344,15 @@ export function writeAggrMetaData(
   dir: string,
   outputPath?: string,
   outputFilename?: string,
-  createCleanFileFlag?: boolean
+  createCleanFileFlag?: boolean,
+  depthToCategory?: number
 ): string;
 export function writeAggrMetaData(
   dir,
   outputPath,
   outputFilename = "audioBookMetadata.json",
-  createCleanFileFlag = false
+  createCleanFileFlag = false,
+  depthToCategory = undefined
 ) {
   const res = walkAndAggrMetadata(dir);
 
@@ -350,7 +361,7 @@ export function writeAggrMetaData(
     JSON.stringify(res.folderMetadataArray)
   );
   if (createCleanFileFlag) {
-    const cleanFile = createCleanFile(res.folderMetadataArray);
+    const cleanFile = createCleanFile(res.folderMetadataArray, depthToCategory);
     fs.writeFileSync(
       path.join(outputPath || dir, `clean-${outputFilename}`),
       JSON.stringify(cleanFile)

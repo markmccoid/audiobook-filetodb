@@ -92,6 +92,7 @@ function parseBookInfoText(textFile) {
         lines = fs_1.default.readFileSync(textFile, "utf16le").toString().split("\r\n");
     }
     let foundSummaryFlag = false;
+    let stopFlag = false;
     let bookInfo = {};
     let summary = [];
     for (let line of lines) {
@@ -103,6 +104,10 @@ function parseBookInfoText(textFile) {
             continue;
         }
         const lowercaseLine = line.toLowerCase();
+        //-- Check if file indicates we should stop recuring
+        if (lowercaseLine.includes("stop:")) {
+            bookInfo.stopFlag = true;
+        }
         //-- Title Of Book
         if (lowercaseLine.includes("title:")) {
             bookInfo.title = line

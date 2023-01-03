@@ -103,6 +103,7 @@ export type BookInfo = {
   narratedBy?: string;
   releaseDate?: string;
   otherCategories?: string[];
+  stopFlag?: boolean;
 };
 export function parseBookInfoText(textFile) {
   let lines = fs.readFileSync(textFile, "utf8").toString().split("\r\n");
@@ -110,6 +111,7 @@ export function parseBookInfoText(textFile) {
     lines = fs.readFileSync(textFile, "utf16le").toString().split("\r\n");
   }
   let foundSummaryFlag = false;
+  let stopFlag = false;
   let bookInfo: BookInfo = {};
   let summary = [];
   for (let line of lines) {
@@ -121,6 +123,11 @@ export function parseBookInfoText(textFile) {
       continue;
     }
     const lowercaseLine = line.toLowerCase();
+
+    //-- Check if file indicates we should stop recuring
+    if (lowercaseLine.includes("stop:")) {
+      bookInfo.stopFlag = true;
+    }
     //-- Title Of Book
     if (lowercaseLine.includes("title:")) {
       bookInfo.title = line
