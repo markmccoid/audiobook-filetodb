@@ -1,0 +1,52 @@
+[
+    {
+        "PurchaseDate": "5/27/2002",
+        "Title": "Powertalk!",
+        "Author": "Anthony Robbins",
+        "Duration": "",
+        "Year": "2020",
+        "Narrator": "Anthony Robbins",
+        "Series": "",
+        "Genre": "Relationships, Parenting & Personal Development - Personal Development - Personal Success"
+    },
+    {
+        "PurchaseDate": "10/30/2002",
+        "Title": "The Twilight Zone Radio Dramas",
+        "Author": "Rod Serling",
+        "Duration": "2:40:00",
+        "Year": "2002",
+        "Narrator": "Host Stacy Keach ",
+        "Series": "",
+        "Genre": "Arts & Entertainment - Audio Performances & Dramatizations"
+    },
+    {
+        "PurchaseDate": "9/7/2004",
+        "Title": "Grass for His Pillow",
+        "Author": "Lian Hearn",
+        "Duration": "9:25:00",
+        "Year": "2003",
+        "Narrator": "Kevin Gray ",
+        "Series": "Tales of the Otori [2]",
+        "Genre": "Literature & Fiction - Classics"
+    },
+    {
+        "PurchaseDate": "12/20/2004",
+        "Title": "Interview with Lemony Snicket (a.k.a. Daniel Handler)",
+        "Author": "Lemony Snicket",
+        "Duration": "0:24:00",
+        "Year": "2004",
+        "Narrator": "Beth Anderson",
+        "Series": "",
+        "Genre": "Arts & Entertainment - Art"
+    },
+    {
+        "PurchaseDate": "6/5/2012",
+        "Title": "Blood Canticle",
+        "Author": "Anne Rice",
+        "Duration": "11:32:00",
+        "Year": "2003",
+        "Narrator": "David Pittu",
+        "Series": "The Vampire Chronicles [10]",
+        "Genre": "Literature & Fiction - Horror - Ghosts"
+    }
+]

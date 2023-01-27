@@ -13,6 +13,7 @@ export type CleanAudioBookData = {
   releaseDate?: string;
   publisher?: string;
   pageCount?: number;
+  bookLength?: string;
   imageURL?: string;
   categories: string[];
   pathDirArray: string[];
@@ -66,7 +67,7 @@ export function createCleanFile(
     const title =
       book.infoFileData?.title ||
       book.folderNameData?.title ||
-      `${book.googleAPIData?.title} ${book.googleAPIData?.subTitle}`;
+      `${book.googleAPIData?.title}: ${book.googleAPIData?.subTitle}`;
     const description =
       book.infoFileData?.summary || book.googleAPIData?.description;
     const publishedYear =
@@ -82,6 +83,7 @@ export function createCleanFile(
       ...(book.infoFileData?.otherCategories || []),
     ].filter((el) => el);
     const directories = extractDirectories(book.fullPath, depthToCategory);
+    const bookLength = book.infoFileData?.length;
     return {
       id: book.id,
       fullPath: book.fullPath,
@@ -95,6 +97,7 @@ export function createCleanFile(
       releaseDate,
       publisher: book.googleAPIData?.publisher,
       pageCount: parseInt(book.googleAPIData?.pageCount) || undefined,
+      bookLength,
       imageURL,
       categories: Array.from(new Set(categories)),
       pathDirArray: directories.allDirs,

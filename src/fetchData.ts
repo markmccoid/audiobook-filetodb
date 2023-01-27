@@ -96,7 +96,7 @@ export async function getBookData(authorIn, titleIn): Promise<GoogleData> {
     })
     .catch((e) => {
       //console.log("ERROR", e.response.status);
-      return { id, authorIn, titleIn, error: e };
+      return { id, authorIn, titleIn, query, error: e };
     });
 }
 

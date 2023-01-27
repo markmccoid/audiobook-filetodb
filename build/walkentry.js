@@ -69,7 +69,7 @@ if (runType === "audiobook") {
 }
 if (runType === "metadata") {
     if (process.argv.length < 4) {
-        console.log(`Usage: \n __filename {type} {aggr input-output location} {aggr input-output filename}`);
+        console.log(`Usage: \n __filename {type} {aggr input-output location} {aggr input filename}`);
         process.exit(-1);
     }
     const inOutPath = process.argv[3];
