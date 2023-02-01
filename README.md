@@ -1,4 +1,4 @@
-# audiobook-filewalker (+ music file walker)
+# audiobook-filewalker
 
 ## Audiobook folders
 
@@ -7,6 +7,18 @@
 ```
 $ npm run build
 ```
+
+## New Fork
+
+This is a new fork of the the audiobook-filewalker repo. This repo will be focused on expanding the ability of the code to not only walk the file system for audiobooks and gerenate a JSON map of the files, but will now also sync it to a MongoDB in Mondo's Atlas servers.
+
+Stack used:
+
+- TypeScript
+- MongoDB Atlas
+- Prisma
+
+## BELOW OLD AND ONLY FOR REFERENCE
 
 There are two main audiobook functions detailed below, but in essense, one will recurse through your audiobook directories and put a metadata json file with information about the audiobook.
 

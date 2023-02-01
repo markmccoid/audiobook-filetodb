@@ -5,18 +5,37 @@ import {
   walkAndTagDirs,
   writeAggrMetaData,
 } from "./audiobook-walkdir";
+import { prisma } from "./data/prisma";
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~ This is the entry point when testing
+//~~ using the "npm run start"
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+async function main() {
+  const result = prisma.books.findFirst({
+    where: {
+      author: {
+        contains: "king",
+        mode: "insensitive",
+      },
+      pageCount: {
+        gt: 500,
+      },
+    },
+  });
+  return result;
+}
+
+main()
+  .then((res) => {
+    console.log("result", res);
+  })
+  .catch((e) => console.log("ERROR", e));
 // const dir = "D:/Dropbox/Mark/myAudioBooks";
 // const dir = "D:/Dropbox/Mark/myAudioBooks/NonFiction";
 // walkAndTagDirs(dir, "yes");
 
-//! TODO
-/**
- * If a hyphen isn't found in the folder name, then don't
- * do a google search.
- * OR Make sure both author and title are available before
- * google is queried.
- */
 //!
 // writeAggrMetaData(dir, "c:/localProgramming", "myfiletest.json");
 
