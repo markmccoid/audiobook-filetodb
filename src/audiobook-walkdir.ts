@@ -11,19 +11,6 @@
  * | - Author-Title
  *  ...
  *
- * This will save a json file in the format of:
- * {
- *  "GenreOne": {
- *    "basePath": "full path to genre folder",
- *    "genre": "GenreOne",
- *    "titles": [
- *      {
- *        "author": ,
- *        "title": ,
- *       }
- *     ]
- *  }
- * }
  */
 
 import fs from "fs";
@@ -34,6 +21,7 @@ import {
   parseFolderName,
   parseBookInfoText,
   getMetadataFromFile,
+  updateMongoDb,
 } from "./parsers";
 import { getBookData, fakeGetBookData } from "./fetchData";
 import type { BookInfo } from "./parsers";
@@ -56,6 +44,7 @@ export type FolderMetadata = {
     category: string;
   };
   googleAPIData: GoogleData;
+  mongoDBId: string | undefined;
 };
 
 //-- Local contants
@@ -72,7 +61,7 @@ function formatPath(dirPath, pathSep = "/") {
   return pathArray.join(pathSep);
 }
 
-//! - TYPE
+//~ - TYPE
 type FirstPassObj = {
   basePath: string;
   baseName: string;
@@ -125,8 +114,11 @@ export async function walkAndTagDirs(
   const directDirName = formatPath(dir);
   const baseName = path.basename(dir);
 
-  const currentMetadata: { googleData: GoogleData; wasGoogleQueried: boolean } =
-    { googleData: undefined, wasGoogleQueried: false };
+  const currentMetadata: {
+    googleData: GoogleData;
+    wasGoogleQueried: boolean;
+    mongoDBId;
+  } = { googleData: undefined, wasGoogleQueried: false, mongoDBId: undefined };
   const {
     id: folderId,
     author: folderBookAuthor,
@@ -187,7 +179,9 @@ export async function walkAndTagDirs(
       firstPassObj.bookInfo = parseBookInfoText(dirPath);
     }
     if (ext === ".json" && fileName.toLowerCase().includes("-metadata")) {
-      currentMetadata.googleData = getMetadataFromFile(dirPath);
+      const { googleData, mongoDBId } = getMetadataFromFile(dirPath);
+      currentMetadata.googleData = googleData;
+      currentMetadata.mongoDBId = mongoDBId;
     }
 
     //-- store images in file
@@ -212,7 +206,7 @@ export async function walkAndTagDirs(
     firstPassObj.dirCount === 0 ||
     firstPassObj.audioFileCount > 0 ||
     Object.keys(firstPassObj.bookInfo).length > 0 ||
-    firstPassObj.bookInfo?.stopFlag
+    firstPassObj.bookInfo?.stopFlag // Allows you to create a stopFlag field in the folder .txt file to stop processing
   ) {
     terminalDirFlag = true;
     let googleData;
@@ -248,7 +242,10 @@ export async function walkAndTagDirs(
         category: folderBookCategory,
       },
       googleAPIData: googleData,
+      mongoDBId: currentMetadata.mongoDBId, // Temp value, will be updated after update functino
     };
+
+    const mongoDBId = updateMongoDb(folderMetadata);
 
     folderMetadataArray.push(folderMetadata);
 

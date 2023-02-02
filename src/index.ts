@@ -12,24 +12,22 @@ import { prisma } from "./data/prisma";
 //~~ using the "npm run start"
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+type Test = {
+  _id: string;
+};
 async function main() {
-  const result = prisma.books.findFirst({
-    where: {
-      author: {
-        contains: "king",
-        mode: "insensitive",
-      },
-      pageCount: {
-        gt: 500,
-      },
-    },
+  const result = await prisma.books.findRaw({
+    filter: { _id: { $eq: { $oid: "63c8c4183e2f12c0e4b0cce0" } } },
+    options: { projection: { _id: true, showRecordId: true } },
   });
-  return result;
+  //const newRes: Test[] = result;
+  return result[0];
 }
 
 main()
   .then((res) => {
-    console.log("result", res);
+    console.log("result", Object.keys(res));
+    console.log(res["_id"]["$oid"]);
   })
   .catch((e) => console.log("ERROR", e));
 // const dir = "D:/Dropbox/Mark/myAudioBooks";

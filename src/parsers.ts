@@ -1,6 +1,9 @@
+import { primaryCatMap } from './audibleMaps';
 import { GoogleData } from "./fetchData";
 import fs from "fs";
 import { FolderMetadata } from "./audiobook-walkdir";
+import { prisma } from "./data/prisma";
+import { cleanOneBook } from "./audiobook-createCleanFile";
 
 type ExtractCategoryReturn = {
   category: string | undefined;
@@ -187,8 +190,12 @@ export function parseBookInfoText(textFile) {
 //--======================================================
 //-- Get info from existing Metadata JSON
 //--======================================================
-export function getMetadataFromFile(dirPath: string): GoogleData {
+export function getMetadataFromFile(dirPath: string): {
+  googleData: GoogleData;
+  mongoDBId: string | undefined;
+} {
   const metadata: FolderMetadata = JSON.parse(fs.readFileSync(dirPath, "utf8"));
+  const mongoDBId = metadata?.mongoDBId;
 
   const queryDate = new Date(
     metadata?.googleAPIData?.queryDateString || "01/01/1970"
@@ -206,8 +213,49 @@ export function getMetadataFromFile(dirPath: string): GoogleData {
       metadata.googleAPIData?.description?.length > 1) ||
     daysSinceLastQuery < 30
   ) {
-    return metadata.googleAPIData;
+    return { googleData: metadata.googleAPIData, mongoDBId };
   }
 
   return undefined;
+}
+
+// This may need to be called from the audiobook-createCleanFile.ts
+export async function updateMongoDb(folderMetadata: FolderMetadata): void {
+  // If book already has a populated mongo DB Id, then return it
+  if (folderMetadata.mongoDBId) return;
+
+  // If no mongoDBId passed, then we will do a lookup to make sure and if we can't
+  //! Need to figure out how to do the lookup (Below is using mongoDBId, which is stupid),
+  //! but good example of searching on _id
+  //! The real lookup should be on bookID doesn't exist in model yet.
+  //!
+  // const result = await prisma.books.findRaw({
+  //   filter: { _id: { $eq: { $oid: mongoDBId } } },
+  // });
+  // if (result.length !== 0) {
+  //   return result[0]["_id"]["$oid"]
+  // }
+
+  // Below code will add a new record to the mongoDB books table and and MUTATE the passed folderMetadata record
+  // adding the ObjectId of new record in the mongoDBId key
+  const cleanBookData = cleanOneBook(folderMetadata)
+  const createdBook = prisma.books.create({
+    data: {
+      primaryCategory: cleanBookData.pathPrimaryCat,
+      secondaryCategory: cleanBookData.pathSecondaryCat,
+      title: cleanBookData.title,
+      author: cleanBookData.author,
+      description: cleanBookData.description,
+      imageURL: cleanBookData.imageURL,
+      bookLengthMinutes: cleanBookData.bookLength, // find conversion is seed function
+      bookLengthText: cleanBookData.bookLength, // find conversion is seed function
+      dropboxLocation: cleanBookData.,
+      genres: cleanBookData.categories,
+      narratedBy: cleanBookData.narratedBy,
+      pageCount: cleanBookData.pageCount,
+      publishedYear: cleanBookData.publishedYear,
+      releaseDate: cleanBookData.releaseDate,
+      source: "dropbox",
+    },
+  });
 }
