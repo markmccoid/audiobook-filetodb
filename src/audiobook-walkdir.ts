@@ -245,7 +245,9 @@ export async function walkAndTagDirs(
       mongoDBId: currentMetadata.mongoDBId, // Temp value, will be updated after update functino
     };
 
-    const mongoDBId = updateMongoDb(folderMetadata);
+    // Will add book to mongo if not already there and update the mongoDBId on the folderMetadata record at same time.
+    // passing object so it will update in function
+    await updateMongoDb(folderMetadata);
 
     folderMetadataArray.push(folderMetadata);
 

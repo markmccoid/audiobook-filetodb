@@ -1,4 +1,4 @@
-import { primaryCatMap } from './audibleMaps';
+import { primaryCatMap } from "./audibleMaps";
 import { GoogleData } from "./fetchData";
 import fs from "fs";
 import { FolderMetadata } from "./audiobook-walkdir";
@@ -191,7 +191,7 @@ export function parseBookInfoText(textFile) {
 //-- Get info from existing Metadata JSON
 //--======================================================
 export function getMetadataFromFile(dirPath: string): {
-  googleData: GoogleData;
+  googleData: GoogleData | undefined;
   mongoDBId: string | undefined;
 } {
   const metadata: FolderMetadata = JSON.parse(fs.readFileSync(dirPath, "utf8"));
@@ -208,20 +208,25 @@ export function getMetadataFromFile(dirPath: string): {
   // Check to make sure googleAPIData is populated with something
   // OR if it has only been 30 days since last query
   if (
-    (metadata.googleAPIData?.title?.length > 1 &&
-      metadata.googleAPIData?.imageURL?.length > 1 &&
-      metadata.googleAPIData?.description?.length > 1) ||
+    (metadata?.googleAPIData?.title?.length > 1 &&
+      metadata?.googleAPIData?.imageURL?.length > 1 &&
+      metadata?.googleAPIData?.description?.length > 1) ||
     daysSinceLastQuery < 30
   ) {
-    return { googleData: metadata.googleAPIData, mongoDBId };
+    return { googleData: metadata?.googleAPIData, mongoDBId };
   }
 
-  return undefined;
+  return { googleData: undefined, mongoDBId };
 }
 
 // This may need to be called from the audiobook-createCleanFile.ts
-export async function updateMongoDb(folderMetadata: FolderMetadata): void {
+export async function updateMongoDb(folderMetadata: FolderMetadata) {
   // If book already has a populated mongo DB Id, then return it
+  console.log(
+    "In Mongo update",
+    folderMetadata.mongoDBId,
+    folderMetadata.folderName
+  );
   if (folderMetadata.mongoDBId) return;
 
   // If no mongoDBId passed, then we will do a lookup to make sure and if we can't
@@ -238,24 +243,65 @@ export async function updateMongoDb(folderMetadata: FolderMetadata): void {
 
   // Below code will add a new record to the mongoDB books table and and MUTATE the passed folderMetadata record
   // adding the ObjectId of new record in the mongoDBId key
-  const cleanBookData = cleanOneBook(folderMetadata)
-  const createdBook = prisma.books.create({
+  const cleanBookData = cleanOneBook(folderMetadata);
+  const { bookLengthMinutes, bookLengthText } = getDropboxBookLength(
+    cleanBookData.bookLength
+  );
+
+  // Create the record in mongo
+  const createdBook = await prisma.books.create({
     data: {
-      primaryCategory: cleanBookData.pathPrimaryCat,
-      secondaryCategory: cleanBookData.pathSecondaryCat,
+      primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
+      secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
       title: cleanBookData.title,
       author: cleanBookData.author,
-      description: cleanBookData.description,
+      description: cleanBookData.description || "",
       imageURL: cleanBookData.imageURL,
-      bookLengthMinutes: cleanBookData.bookLength, // find conversion is seed function
-      bookLengthText: cleanBookData.bookLength, // find conversion is seed function
-      dropboxLocation: cleanBookData.,
-      genres: cleanBookData.categories,
+      bookLengthMinutes: bookLengthMinutes, // find conversion is seed function
+      bookLengthText: bookLengthText, // find conversion is seed function
+      dropboxLocation: cleanBookData.fullPath,
+      genres: cleanBookData.categories.flatMap((cat) =>
+        cat.trim().toLowerCase() !== "self-help"
+          ? cat.split("-").map((el) => el.trim())
+          : cat.trim()
+      ),
       narratedBy: cleanBookData.narratedBy,
       pageCount: cleanBookData.pageCount,
-      publishedYear: cleanBookData.publishedYear,
-      releaseDate: cleanBookData.releaseDate,
+      publishedYear: cleanBookData?.publishedYear
+        ? cleanBookData.publishedYear
+        : 0,
+      releaseDate: cleanBookData?.releaseDate
+        ? new Date(cleanBookData.releaseDate)
+        : undefined,
       source: "dropbox",
     },
   });
+  folderMetadata.mongoDBId = createdBook.id;
+  console.log(
+    "Aftger Mongo update",
+    folderMetadata.mongoDBId,
+    createdBook.id,
+    cleanBookData.title
+  );
+  return;
+}
+
+function getDropboxBookLength(bookLength: string | undefined) {
+  if (!bookLength)
+    return { bookLengthMinutes: undefined, bookLengthText: undefined };
+
+  const timeArray = bookLength
+    .replace(/\s/g, "")
+    .replace("and", "")
+    .replace("hrs", "-")
+    .replace("mins", "")
+    .replace("hr", "-")
+    .replace("min", "")
+    .split("-");
+  const hours = parseInt(timeArray[0]);
+  const min = parseInt(timeArray[1]) || 0;
+
+  const bookLengthMinutes = hours * 60 + min;
+  const bookLengthText = `${hours} hrs and ${min} mins`;
+  return { bookLengthMinutes, bookLengthText };
 }

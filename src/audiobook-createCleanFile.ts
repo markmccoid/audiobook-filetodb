@@ -158,4 +158,3 @@ export function cleanOneBook(
       pathSecondaryCat: directories.secondaryDirCat,
     };
   }
-}
