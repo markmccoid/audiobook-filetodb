@@ -16,7 +16,7 @@ type Test = {
   _id: string;
 };
 
-const dirToTest = "C:/localStuff/demonoid/AudioBooks/Test";
+const dirToTest = "D:/Dropbox/Mark/myAudioBooks";
 async function main() {
   const { queryGoogle, dirArray, folderMetadataArray } = await walkAndTagDirs(
     dirToTest,
@@ -52,7 +52,15 @@ async function main() {
   // return createdBook;
 }
 
-main();
+main()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
 // const dir = "D:/Dropbox/Mark/myAudioBooks";
 // const dir = "D:/Dropbox/Mark/myAudioBooks/NonFiction";
 // walkAndTagDirs(dir, "yes");

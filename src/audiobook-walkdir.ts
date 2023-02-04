@@ -45,6 +45,7 @@ export type FolderMetadata = {
   };
   googleAPIData: GoogleData;
   mongoDBId: string | undefined;
+  forceMongoUpdate?: boolean | undefined;
 };
 
 //-- Local contants
@@ -118,7 +119,13 @@ export async function walkAndTagDirs(
     googleData: GoogleData;
     wasGoogleQueried: boolean;
     mongoDBId;
-  } = { googleData: undefined, wasGoogleQueried: false, mongoDBId: undefined };
+    forceMongoUpdate;
+  } = {
+    googleData: undefined,
+    wasGoogleQueried: false,
+    mongoDBId: undefined,
+    forceMongoUpdate: false,
+  };
   const {
     id: folderId,
     author: folderBookAuthor,
@@ -179,9 +186,13 @@ export async function walkAndTagDirs(
       firstPassObj.bookInfo = parseBookInfoText(dirPath);
     }
     if (ext === ".json" && fileName.toLowerCase().includes("-metadata")) {
-      const { googleData, mongoDBId } = getMetadataFromFile(dirPath);
+      // if metadata json file exists pull some data to determine if we need to
+      // query google and/or upload to mongoDB
+      const { googleData, mongoDBId, forceMongoUpdate } =
+        getMetadataFromFile(dirPath);
       currentMetadata.googleData = googleData;
       currentMetadata.mongoDBId = mongoDBId;
+      currentMetadata.forceMongoUpdate = forceMongoUpdate; // if true, we will update mongo
     }
 
     //-- store images in file
@@ -242,7 +253,8 @@ export async function walkAndTagDirs(
         category: folderBookCategory,
       },
       googleAPIData: googleData,
-      mongoDBId: currentMetadata.mongoDBId, // Temp value, will be updated after update functino
+      mongoDBId: currentMetadata.mongoDBId, // Temp value, will be updated after update function
+      forceMongoUpdate: currentMetadata.forceMongoUpdate,
     };
 
     // Will add book to mongo if not already there and update the mongoDBId on the folderMetadata record at same time.

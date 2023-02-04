@@ -4,6 +4,7 @@ import fs from "fs";
 import { FolderMetadata } from "./audiobook-walkdir";
 import { prisma } from "./data/prisma";
 import { cleanOneBook } from "./audiobook-createCleanFile";
+import chalk from "chalk";
 
 type ExtractCategoryReturn = {
   category: string | undefined;
@@ -193,9 +194,11 @@ export function parseBookInfoText(textFile) {
 export function getMetadataFromFile(dirPath: string): {
   googleData: GoogleData | undefined;
   mongoDBId: string | undefined;
+  forceMongoUpdate: boolean | undefined;
 } {
   const metadata: FolderMetadata = JSON.parse(fs.readFileSync(dirPath, "utf8"));
   const mongoDBId = metadata?.mongoDBId;
+  const forceMongoUpdate = !!metadata?.forceMongoUpdate;
 
   const queryDate = new Date(
     metadata?.googleAPIData?.queryDateString || "01/01/1970"
@@ -206,30 +209,26 @@ export function getMetadataFromFile(dirPath: string): {
     (todaysDate - queryDate) / (1000 * 60 * 60 * 24)
   );
   // Check to make sure googleAPIData is populated with something
-  // OR if it has only been 30 days since last query
+  // OR if it has only been 300 days since last query
   if (
     (metadata?.googleAPIData?.title?.length > 1 &&
       metadata?.googleAPIData?.imageURL?.length > 1 &&
       metadata?.googleAPIData?.description?.length > 1) ||
-    daysSinceLastQuery < 30
+    daysSinceLastQuery < 300
   ) {
-    return { googleData: metadata?.googleAPIData, mongoDBId };
+    return { googleData: metadata?.googleAPIData, mongoDBId, forceMongoUpdate };
   }
 
-  return { googleData: undefined, mongoDBId };
+  return { googleData: undefined, mongoDBId, forceMongoUpdate };
 }
 
 // This may need to be called from the audiobook-createCleanFile.ts
 export async function updateMongoDb(folderMetadata: FolderMetadata) {
-  // If book already has a populated mongo DB Id, then return it
-  console.log(
-    "In Mongo update",
-    folderMetadata.mongoDBId,
-    folderMetadata.folderName
-  );
-  if (folderMetadata.mongoDBId) return;
+  // If book already has a populated mongo DB Id and we don't want to force an update, then return
+  if (folderMetadata.mongoDBId && !folderMetadata?.forceMongoUpdate) return;
 
   // If no mongoDBId passed, then we will do a lookup to make sure and if we can't
+  // Not sure if this is even needed.
   //! Need to figure out how to do the lookup (Below is using mongoDBId, which is stupid),
   //! but good example of searching on _id
   //! The real lookup should be on bookID doesn't exist in model yet.
@@ -248,40 +247,65 @@ export async function updateMongoDb(folderMetadata: FolderMetadata) {
     cleanBookData.bookLength
   );
 
-  // Create the record in mongo
-  const createdBook = await prisma.books.create({
-    data: {
-      primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
-      secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
-      title: cleanBookData.title,
-      author: cleanBookData.author,
-      description: cleanBookData.description || "",
-      imageURL: cleanBookData.imageURL,
-      bookLengthMinutes: bookLengthMinutes, // find conversion is seed function
-      bookLengthText: bookLengthText, // find conversion is seed function
-      dropboxLocation: cleanBookData.fullPath,
-      genres: cleanBookData.categories.flatMap((cat) =>
-        cat.trim().toLowerCase() !== "self-help"
-          ? cat.split("-").map((el) => el.trim())
-          : cat.trim()
-      ),
-      narratedBy: cleanBookData.narratedBy,
-      pageCount: cleanBookData.pageCount,
-      publishedYear: cleanBookData?.publishedYear
-        ? cleanBookData.publishedYear
-        : 0,
-      releaseDate: cleanBookData?.releaseDate
-        ? new Date(cleanBookData.releaseDate)
-        : undefined,
-      source: "dropbox",
-    },
-  });
+  let createOrUpdate = "created";
+  let createdBook;
+  //~ Creating a new record in Mongo
+  if (!folderMetadata.mongoDBId) {
+    // Create the record in mongo
+    createdBook = await prisma.books.create({
+      data: {
+        primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
+        secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
+        title: cleanBookData.title,
+        author: cleanBookData.author,
+        description: cleanBookData.description || "",
+        imageURL: cleanBookData.imageURL,
+        bookLengthMinutes: bookLengthMinutes, // find conversion is seed function
+        bookLengthText: bookLengthText, // find conversion is seed function
+        dropboxLocation: cleanBookData.fullPath,
+        genres: cleanBookData.categories.flatMap((cat) =>
+          cat.trim().toLowerCase() !== "self-help"
+            ? cat.split("-").map((el) => el.trim())
+            : cat.trim()
+        ),
+        narratedBy: cleanBookData.narratedBy,
+        pageCount: cleanBookData.pageCount,
+        publishedYear: cleanBookData?.publishedYear
+          ? cleanBookData.publishedYear
+          : 0,
+        releaseDate: cleanBookData?.releaseDate
+          ? new Date(cleanBookData.releaseDate)
+          : undefined,
+        source: "dropbox",
+      },
+    });
+  }
+
+  //~ UPDATE book data.  Only update a few properties.
+  //~ For example if they moved directories and renamed folder
+  if (folderMetadata.mongoDBId && folderMetadata?.forceMongoUpdate) {
+    createOrUpdate = "updated";
+    createdBook = await prisma.books.update({
+      where: {
+        id: folderMetadata.mongoDBId,
+      },
+      data: {
+        primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
+        secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
+        // title: cleanBookData.title,
+        // author: cleanBookData.author,
+        dropboxLocation: cleanBookData.fullPath,
+      },
+    });
+  }
   folderMetadata.mongoDBId = createdBook.id;
+  folderMetadata.forceMongoUpdate = false;
+
   console.log(
-    "Aftger Mongo update",
-    folderMetadata.mongoDBId,
-    createdBook.id,
-    cleanBookData.title
+    chalk.green("MONGO "),
+    chalk.cyan(cleanBookData.title),
+    " was",
+    chalk.green(` ${createOrUpdate} in MongoDB`)
   );
   return;
 }
