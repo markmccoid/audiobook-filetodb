@@ -44,7 +44,7 @@ function getAudibleData(authorIn, titleIn) {
             let description = audibleData.publisher_summary;
             let bookLengthMin = audibleData.runtime_length_min;
             let formatType = audibleData.format_type;
-            let title = audibleData.title;
+            let title = `${audibleData.title}${(audibleData === null || audibleData === void 0 ? void 0 : audibleData.subtitle) ? ":" + (audibleData === null || audibleData === void 0 ? void 0 : audibleData.subtitle) : ""}`;
             let publishedDate = audibleData.issue_date;
             return {
                 asin,

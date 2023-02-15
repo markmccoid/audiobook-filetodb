@@ -110,11 +110,16 @@ function processData(data) {
 // processAudibleObjArr().then((cleanList) => {
 //   fs.writeFileSync(`audibleBooks-Clean.json`, JSON.stringify(cleanList));
 // });
-const bookData = fs.readFileSync("audibleBooks-enhanced.json", {
-    encoding: "utf-8",
-});
-const final = JSON.parse(bookData).map((book) => (Object.assign({ id: `audible-${book.author}~${book.title}~${Math.floor(Math.random() * 1000)}`.replace(/\s/g, "_") }, book)));
-fs.writeFileSync("audiblebooks-withid.json", JSON.stringify(final));
+// const bookData = fs.readFileSync("audibleBooks-enhanced.json", {
+//   encoding: "utf-8",
+// });
+// const final = JSON.parse(bookData).map((book) => ({
+//   id: `audible-${book.author}~${book.title}~${Math.floor(
+//     Math.random() * 1000
+//   )}`.replace(/\s/g, "_"),
+//   ...book,
+// }));
+// fs.writeFileSync("audiblebooks-withid.json", JSON.stringify(final));
 function mergeAudibleData() {
     return __awaiter(this, void 0, void 0, function* () {
         const bookData = JSON.parse(fs.readFileSync("audibleBooks.json", {
@@ -129,4 +134,4 @@ function mergeAudibleData() {
         fs.writeFileSync("audibleBooks-enhanced.json", JSON.stringify(bookData));
     });
 }
-// mergeAudibleData();
+mergeAudibleData();

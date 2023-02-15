@@ -1,10 +1,22 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMetadataFromFile = exports.parseBookInfoText = exports.parseFolderName = void 0;
+exports.updateMongoDb = exports.getMetadataFromFile = exports.parseBookInfoText = exports.parseFolderName = void 0;
 const fs_1 = __importDefault(require("fs"));
+const prisma_1 = require("./data/prisma");
+const audiobook_createCleanFile_1 = require("./audiobook-createCleanFile");
+const chalk_1 = __importDefault(require("chalk"));
 //--======================================================
 //-- Extract Category from folder name
 //--======================================================
@@ -166,19 +178,115 @@ exports.parseBookInfoText = parseBookInfoText;
 function getMetadataFromFile(dirPath) {
     var _a, _b, _c, _d, _e, _f, _g;
     const metadata = JSON.parse(fs_1.default.readFileSync(dirPath, "utf8"));
+    const mongoDBId = metadata === null || metadata === void 0 ? void 0 : metadata.mongoDBId;
+    const forceMongoUpdate = !!(metadata === null || metadata === void 0 ? void 0 : metadata.forceMongoUpdate);
     const queryDate = new Date(((_a = metadata === null || metadata === void 0 ? void 0 : metadata.googleAPIData) === null || _a === void 0 ? void 0 : _a.queryDateString) || "01/01/1970");
     const todaysDate = new Date();
     const daysSinceLastQuery = Math.floor(
     // @ts-ignore
     (todaysDate - queryDate) / (1000 * 60 * 60 * 24));
     // Check to make sure googleAPIData is populated with something
-    // OR if it has only been 30 days since last query
-    if ((((_c = (_b = metadata.googleAPIData) === null || _b === void 0 ? void 0 : _b.title) === null || _c === void 0 ? void 0 : _c.length) > 1 &&
-        ((_e = (_d = metadata.googleAPIData) === null || _d === void 0 ? void 0 : _d.imageURL) === null || _e === void 0 ? void 0 : _e.length) > 1 &&
-        ((_g = (_f = metadata.googleAPIData) === null || _f === void 0 ? void 0 : _f.description) === null || _g === void 0 ? void 0 : _g.length) > 1) ||
-        daysSinceLastQuery < 30) {
-        return metadata.googleAPIData;
+    // OR if it has only been 300 days since last query
+    if ((((_c = (_b = metadata === null || metadata === void 0 ? void 0 : metadata.googleAPIData) === null || _b === void 0 ? void 0 : _b.title) === null || _c === void 0 ? void 0 : _c.length) > 1 &&
+        ((_e = (_d = metadata === null || metadata === void 0 ? void 0 : metadata.googleAPIData) === null || _d === void 0 ? void 0 : _d.imageURL) === null || _e === void 0 ? void 0 : _e.length) > 1 &&
+        ((_g = (_f = metadata === null || metadata === void 0 ? void 0 : metadata.googleAPIData) === null || _f === void 0 ? void 0 : _f.description) === null || _g === void 0 ? void 0 : _g.length) > 1) ||
+        daysSinceLastQuery < 300) {
+        return { googleData: metadata === null || metadata === void 0 ? void 0 : metadata.googleAPIData, mongoDBId, forceMongoUpdate };
     }
-    return undefined;
+    return { googleData: undefined, mongoDBId, forceMongoUpdate };
 }
 exports.getMetadataFromFile = getMetadataFromFile;
+// This may need to be called from the audiobook-createCleanFile.ts
+function updateMongoDb(folderMetadata) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // If book already has a populated mongo DB Id and we don't want to force an update, then return
+        if (folderMetadata.mongoDBId && !(folderMetadata === null || folderMetadata === void 0 ? void 0 : folderMetadata.forceMongoUpdate))
+            return;
+        // If no mongoDBId passed, then we will do a lookup to make sure and if we can't
+        // Not sure if this is even needed.
+        //! Need to figure out how to do the lookup (Below is using mongoDBId, which is stupid),
+        //! but good example of searching on _id
+        //! The real lookup should be on bookID doesn't exist in model yet.
+        //!
+        // const result = await prisma.books.findRaw({
+        //   filter: { _id: { $eq: { $oid: mongoDBId } } },
+        // });
+        // if (result.length !== 0) {
+        //   return result[0]["_id"]["$oid"]
+        // }
+        // Below code will add a new record to the mongoDB books table and and MUTATE the passed folderMetadata record
+        // adding the ObjectId of new record in the mongoDBId key
+        const cleanBookData = (0, audiobook_createCleanFile_1.cleanOneBook)(folderMetadata);
+        const { bookLengthMinutes, bookLengthText } = getDropboxBookLength(cleanBookData.bookLength);
+        let createOrUpdate = "created";
+        let createdBook;
+        //~ Creating a new record in Mongo
+        if (!folderMetadata.mongoDBId) {
+            // Create the record in mongo
+            createdBook = yield prisma_1.prisma.books.create({
+                data: {
+                    primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
+                    secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
+                    title: cleanBookData.title,
+                    author: cleanBookData.author,
+                    description: cleanBookData.description || "",
+                    imageURL: cleanBookData.imageURL,
+                    bookLengthMinutes: bookLengthMinutes,
+                    bookLengthText: bookLengthText,
+                    dropboxLocation: cleanBookData.fullPath,
+                    genres: cleanBookData.categories.flatMap((cat) => cat.trim().toLowerCase() !== "self-help"
+                        ? cat.split("-").map((el) => el.trim())
+                        : cat.trim()),
+                    narratedBy: cleanBookData.narratedBy,
+                    pageCount: cleanBookData.pageCount,
+                    publishedYear: (cleanBookData === null || cleanBookData === void 0 ? void 0 : cleanBookData.publishedYear)
+                        ? cleanBookData.publishedYear
+                        : 0,
+                    releaseDate: (cleanBookData === null || cleanBookData === void 0 ? void 0 : cleanBookData.releaseDate)
+                        ? new Date(cleanBookData.releaseDate)
+                        : undefined,
+                    source: "dropbox",
+                },
+            });
+        }
+        //~ UPDATE book data.  Only update a few properties.
+        //~ For example if they moved directories and renamed folder
+        if (folderMetadata.mongoDBId && (folderMetadata === null || folderMetadata === void 0 ? void 0 : folderMetadata.forceMongoUpdate)) {
+            createOrUpdate = "updated";
+            createdBook = yield prisma_1.prisma.books.update({
+                where: {
+                    id: folderMetadata.mongoDBId,
+                },
+                data: {
+                    primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
+                    secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
+                    // title: cleanBookData.title,
+                    // author: cleanBookData.author,
+                    dropboxLocation: cleanBookData.fullPath,
+                },
+            });
+        }
+        folderMetadata.mongoDBId = createdBook.id;
+        folderMetadata.forceMongoUpdate = false;
+        console.log(chalk_1.default.green("MONGO "), chalk_1.default.cyan(cleanBookData.title), " was", chalk_1.default.green(` ${createOrUpdate} in MongoDB`));
+        return;
+    });
+}
+exports.updateMongoDb = updateMongoDb;
+function getDropboxBookLength(bookLength) {
+    if (!bookLength)
+        return { bookLengthMinutes: undefined, bookLengthText: undefined };
+    const timeArray = bookLength
+        .replace(/\s/g, "")
+        .replace("and", "")
+        .replace("hrs", "-")
+        .replace("mins", "")
+        .replace("hr", "-")
+        .replace("min", "")
+        .split("-");
+    const hours = parseInt(timeArray[0]);
+    const min = parseInt(timeArray[1]) || 0;
+    const bookLengthMinutes = hours * 60 + min;
+    const bookLengthText = `${hours} hrs and ${min} mins`;
+    return { bookLengthMinutes, bookLengthText };
+}

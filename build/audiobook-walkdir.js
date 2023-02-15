@@ -12,19 +12,6 @@
  * | - Author-Title
  *  ...
  *
- * This will save a json file in the format of:
- * {
- *  "GenreOne": {
- *    "basePath": "full path to genre folder",
- *    "genre": "GenreOne",
- *    "titles": [
- *      {
- *        "author": ,
- *        "title": ,
- *       }
- *     ]
- *  }
- * }
  */
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -70,7 +57,12 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
         let terminalDirFlag = false;
         const directDirName = formatPath(dir);
         const baseName = path_1.default.basename(dir);
-        const currentMetadata = { googleData: undefined, wasGoogleQueried: false };
+        const currentMetadata = {
+            googleData: undefined,
+            wasGoogleQueried: false,
+            mongoDBId: undefined,
+            forceMongoUpdate: false,
+        };
         const { id: folderId, author: folderBookAuthor, title: folderBookTitle, category: folderBookCategory, year: folderBookYear, } = (0, parsers_1.parseFolderName)(path_1.default.basename(dir));
         //-- First loop does NOT recurse, but builds info
         //-- and sets terminalDirFlag (no more recursing)
@@ -119,7 +111,12 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
                 firstPassObj.bookInfo = (0, parsers_1.parseBookInfoText)(dirPath);
             }
             if (ext === ".json" && fileName.toLowerCase().includes("-metadata")) {
-                currentMetadata.googleData = (0, parsers_1.getMetadataFromFile)(dirPath);
+                // if metadata json file exists pull some data to determine if we need to
+                // query google and/or upload to mongoDB
+                const { googleData, mongoDBId, forceMongoUpdate } = (0, parsers_1.getMetadataFromFile)(dirPath);
+                currentMetadata.googleData = googleData;
+                currentMetadata.mongoDBId = mongoDBId;
+                currentMetadata.forceMongoUpdate = forceMongoUpdate; // if true, we will update mongo
             }
             //-- store images in file
             if (IMAGEFORMATS.some((el) => el === ext)) {
@@ -141,7 +138,8 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
         if (firstPassObj.dirCount === 0 ||
             firstPassObj.audioFileCount > 0 ||
             Object.keys(firstPassObj.bookInfo).length > 0 ||
-            ((_a = firstPassObj.bookInfo) === null || _a === void 0 ? void 0 : _a.stopFlag)) {
+            ((_a = firstPassObj.bookInfo) === null || _a === void 0 ? void 0 : _a.stopFlag) // Allows you to create a stopFlag field in the folder .txt file to stop processing
+        ) {
             terminalDirFlag = true;
             let googleData;
             // if query flag true AND we didn't already find populated google data, then query
@@ -174,7 +172,12 @@ function walkAndTagDirs(dir, queryGoogle = "no", dirArray = [], folderMetadataAr
                     category: folderBookCategory,
                 },
                 googleAPIData: googleData,
+                mongoDBId: currentMetadata.mongoDBId,
+                forceMongoUpdate: currentMetadata.forceMongoUpdate,
             };
+            // Will add book to mongo if not already there and update the mongoDBId on the folderMetadata record at same time.
+            // passing object so it will update in function
+            yield (0, parsers_1.updateMongoDb)(folderMetadata);
             folderMetadataArray.push(folderMetadata);
             // Construct filename for metadata
             const outTitle = folderBookTitle;

@@ -22,7 +22,9 @@ async function main() {
     dirToTest,
     "yes"
   );
+
   console.log("Done Processing", folderMetadataArray.length);
+
   // const result = await prisma.books.findRaw({
   //   filter: { _id: { $eq: { $oid: "63c8c4183e2f12c0e4b0cce0" } } },
   //   options: { projection: { _id: true, showRecordId: true } },
