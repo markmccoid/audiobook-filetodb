@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -197,80 +188,78 @@ function getMetadataFromFile(dirPath) {
 }
 exports.getMetadataFromFile = getMetadataFromFile;
 // This may need to be called from the audiobook-createCleanFile.ts
-function updateMongoDb(folderMetadata) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // If book already has a populated mongo DB Id and we don't want to force an update, then return
-        if (folderMetadata.mongoDBId && !(folderMetadata === null || folderMetadata === void 0 ? void 0 : folderMetadata.forceMongoUpdate))
-            return;
-        // If no mongoDBId passed, then we will do a lookup to make sure and if we can't
-        // Not sure if this is even needed.
-        //! Need to figure out how to do the lookup (Below is using mongoDBId, which is stupid),
-        //! but good example of searching on _id
-        //! The real lookup should be on bookID doesn't exist in model yet.
-        //!
-        // const result = await prisma.books.findRaw({
-        //   filter: { _id: { $eq: { $oid: mongoDBId } } },
-        // });
-        // if (result.length !== 0) {
-        //   return result[0]["_id"]["$oid"]
-        // }
-        // Below code will add a new record to the mongoDB books table and and MUTATE the passed folderMetadata record
-        // adding the ObjectId of new record in the mongoDBId key
-        const cleanBookData = (0, audiobook_createCleanFile_1.cleanOneBook)(folderMetadata);
-        const { bookLengthMinutes, bookLengthText } = getDropboxBookLength(cleanBookData.bookLength);
-        let createOrUpdate = "created";
-        let createdBook;
-        //~ Creating a new record in Mongo
-        if (!folderMetadata.mongoDBId) {
-            // Create the record in mongo
-            createdBook = yield prisma_1.prisma.books.create({
-                data: {
-                    primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
-                    secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
-                    title: cleanBookData.title,
-                    author: cleanBookData.author,
-                    description: cleanBookData.description || "",
-                    imageURL: cleanBookData.imageURL,
-                    bookLengthMinutes: bookLengthMinutes,
-                    bookLengthText: bookLengthText,
-                    dropboxLocation: cleanBookData.fullPath,
-                    genres: cleanBookData.categories.flatMap((cat) => cat.trim().toLowerCase() !== "self-help"
-                        ? cat.split("-").map((el) => el.trim())
-                        : cat.trim()),
-                    narratedBy: cleanBookData.narratedBy,
-                    pageCount: cleanBookData.pageCount,
-                    publishedYear: (cleanBookData === null || cleanBookData === void 0 ? void 0 : cleanBookData.publishedYear)
-                        ? cleanBookData.publishedYear
-                        : 0,
-                    releaseDate: (cleanBookData === null || cleanBookData === void 0 ? void 0 : cleanBookData.releaseDate)
-                        ? new Date(cleanBookData.releaseDate)
-                        : undefined,
-                    source: "dropbox",
-                },
-            });
-        }
-        //~ UPDATE book data.  Only update a few properties.
-        //~ For example if they moved directories and renamed folder
-        if (folderMetadata.mongoDBId && (folderMetadata === null || folderMetadata === void 0 ? void 0 : folderMetadata.forceMongoUpdate)) {
-            createOrUpdate = "updated";
-            createdBook = yield prisma_1.prisma.books.update({
-                where: {
-                    id: folderMetadata.mongoDBId,
-                },
-                data: {
-                    primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
-                    secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
-                    // title: cleanBookData.title,
-                    // author: cleanBookData.author,
-                    dropboxLocation: cleanBookData.fullPath,
-                },
-            });
-        }
-        folderMetadata.mongoDBId = createdBook.id;
-        folderMetadata.forceMongoUpdate = false;
-        console.log(chalk_1.default.green("MONGO "), chalk_1.default.cyan(cleanBookData.title), " was", chalk_1.default.green(` ${createOrUpdate} in MongoDB`));
+async function updateMongoDb(folderMetadata) {
+    // If book already has a populated mongo DB Id and we don't want to force an update, then return
+    if (folderMetadata.mongoDBId && !(folderMetadata === null || folderMetadata === void 0 ? void 0 : folderMetadata.forceMongoUpdate))
         return;
-    });
+    // If no mongoDBId passed, then we will do a lookup to make sure and if we can't
+    // Not sure if this is even needed.
+    //! Need to figure out how to do the lookup (Below is using mongoDBId, which is stupid),
+    //! but good example of searching on _id
+    //! The real lookup should be on bookID doesn't exist in model yet.
+    //!
+    // const result = await prisma.books.findRaw({
+    //   filter: { _id: { $eq: { $oid: mongoDBId } } },
+    // });
+    // if (result.length !== 0) {
+    //   return result[0]["_id"]["$oid"]
+    // }
+    // Below code will add a new record to the mongoDB books table and and MUTATE the passed folderMetadata record
+    // adding the ObjectId of new record in the mongoDBId key
+    const cleanBookData = (0, audiobook_createCleanFile_1.cleanOneBook)(folderMetadata);
+    const { bookLengthMinutes, bookLengthText } = getDropboxBookLength(cleanBookData.bookLength);
+    let createOrUpdate = "created";
+    let createdBook;
+    //~ Creating a new record in Mongo
+    if (!folderMetadata.mongoDBId) {
+        // Create the record in mongo
+        createdBook = await prisma_1.prisma.books.create({
+            data: {
+                primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
+                secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
+                title: cleanBookData.title,
+                author: cleanBookData.author,
+                description: cleanBookData.description || "",
+                imageURL: cleanBookData.imageURL,
+                bookLengthMinutes: bookLengthMinutes,
+                bookLengthText: bookLengthText,
+                dropboxLocation: cleanBookData.fullPath,
+                genres: cleanBookData.categories.flatMap((cat) => cat.trim().toLowerCase() !== "self-help"
+                    ? cat.split("-").map((el) => el.trim())
+                    : cat.trim()),
+                narratedBy: cleanBookData.narratedBy,
+                pageCount: cleanBookData.pageCount,
+                publishedYear: (cleanBookData === null || cleanBookData === void 0 ? void 0 : cleanBookData.publishedYear)
+                    ? cleanBookData.publishedYear
+                    : 0,
+                releaseDate: (cleanBookData === null || cleanBookData === void 0 ? void 0 : cleanBookData.releaseDate)
+                    ? new Date(cleanBookData.releaseDate)
+                    : undefined,
+                source: "dropbox",
+            },
+        });
+    }
+    //~ UPDATE book data.  Only update a few properties.
+    //~ For example if they moved directories and renamed folder
+    if (folderMetadata.mongoDBId && (folderMetadata === null || folderMetadata === void 0 ? void 0 : folderMetadata.forceMongoUpdate)) {
+        createOrUpdate = "updated";
+        createdBook = await prisma_1.prisma.books.update({
+            where: {
+                id: folderMetadata.mongoDBId,
+            },
+            data: {
+                primaryCategory: cleanBookData.pathPrimaryCat || "Unknown",
+                secondaryCategory: cleanBookData.pathSecondaryCat || "Unknown",
+                // title: cleanBookData.title,
+                // author: cleanBookData.author,
+                dropboxLocation: cleanBookData.fullPath,
+            },
+        });
+    }
+    folderMetadata.mongoDBId = createdBook.id;
+    folderMetadata.forceMongoUpdate = false;
+    console.log(chalk_1.default.green("MONGO "), chalk_1.default.cyan(cleanBookData.title), " was", chalk_1.default.green(` ${createOrUpdate} in MongoDB`));
+    return;
 }
 exports.updateMongoDb = updateMongoDb;
 function getDropboxBookLength(bookLength) {

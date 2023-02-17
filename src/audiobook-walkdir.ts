@@ -92,8 +92,10 @@ export async function walkAndTagDirs(
   // have any google info.  "force" will force a search regardless of data in metadata json file
   queryGoogle?: QueryGoogle,
   // Used in recursion (do not pass when calling)
+  // Should we update/create records in MongoDB
+  mongoDBUpdateFlag?: boolean,
+  // Used in recursion (do not pass when calling at top level)
   dirArray?: string[],
-  // Used in recursion (do not pass when calling)
   folderMetadataArray?: FolderMetadata[]
 ): Promise<{
   queryGoogle: QueryGoogle;
@@ -103,6 +105,7 @@ export async function walkAndTagDirs(
 export async function walkAndTagDirs(
   dir: string,
   queryGoogle: QueryGoogle = "no",
+  mongoDBUpdateFlag: boolean = true,
   dirArray: string[] = [],
   folderMetadataArray: FolderMetadata[] = []
 ) {
@@ -259,7 +262,9 @@ export async function walkAndTagDirs(
 
     // Will add book to mongo if not already there and update the mongoDBId on the folderMetadata record at same time.
     // passing object so it will update in function
-    await updateMongoDb(folderMetadata);
+    if (mongoDBUpdateFlag) {
+      await updateMongoDb(folderMetadata);
+    }
 
     folderMetadataArray.push(folderMetadata);
 
@@ -301,7 +306,13 @@ export async function walkAndTagDirs(
       // });
       // dirLog = { ...dirLog, dirObj };
       dirArray.push(formatPath(dirPath));
-      await walkAndTagDirs(dirPath, queryGoogle, dirArray, folderMetadataArray);
+      await walkAndTagDirs(
+        dirPath,
+        queryGoogle,
+        mongoDBUpdateFlag,
+        dirArray,
+        folderMetadataArray
+      );
     }
   }
 

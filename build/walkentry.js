@@ -40,12 +40,13 @@ if (runType === "music") {
 if (runType === "audiobook") {
     console.log("Argv.length", process.argv.length, process.argv);
     if (process.argv.length < 5) {
-        console.log(`Usage: \n __filename {type} {aggr only} {aggr output location} {aggr output filename} {starting directory} {call google api}
+        console.log(`Usage: \n __filename {type} {aggr only} {aggr output location} {aggr output filename} {starting directory} {call google api} {depthToCategory} {updateMongoDBFlag}
                     type = "audiobook" | "music"
                     aggr only = "yes" | "no"
                     ...
                     call google api = "yes" | "no" | "force"
-                    depthToCategory -> this is number of dirs before we hit the primary category, if let blank, don't calc primary/secondary dirs
+                    depthToCategory -> this is number of dirs before we hit the primary category, if left blank, don't calc primary/secondary dirs
+                    updateMongoDBFlag = boolean, true will update mongo
       `);
         process.exit(-1);
     }
@@ -55,8 +56,9 @@ if (runType === "audiobook") {
     const startingDir = process === null || process === void 0 ? void 0 : process.argv[6];
     const callGoogleApi = process === null || process === void 0 ? void 0 : process.argv[7];
     const depthToCategory = parseInt(process === null || process === void 0 ? void 0 : process.argv[8]) || undefined;
+    const updateMongoDbFlag = process === null || process === void 0 ? void 0 : process.argv[9];
     if (!isAggrOnly) {
-        walkAndTagDirs(startingDir, callGoogleApi).then((res) => {
+        walkAndTagDirs(startingDir, callGoogleApi, updateMongoDbFlag).then((res) => {
             writeAggrMetaData(startingDir, outputPath, outputFile, true, depthToCategory);
             console.log(`Data written to ${path.join(outputPath, outputFile)}`);
         });

@@ -1,58 +1,161 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const audiobook_walkdir_1 = require("./audiobook-walkdir");
-const prisma_1 = require("./data/prisma");
-const dirToTest = "D:/Dropbox/Mark/myAudioBooks";
-function main() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const { queryGoogle, dirArray, folderMetadataArray } = yield (0, audiobook_walkdir_1.walkAndTagDirs)(dirToTest, "yes");
-        console.log("Done Processing", folderMetadataArray.length);
-        // const result = await prisma.books.findRaw({
-        //   filter: { _id: { $eq: { $oid: "63c8c4183e2f12c0e4b0cce0" } } },
-        //   options: { projection: { _id: true, showRecordId: true } },
-        // });
-        // //const newRes: Test[] = result;
-        // return result[0];
-        // const createdBook = await prisma.books.create({
-        //   data: {
-        //     primaryCategory: "primaryCategory",
-        //     secondaryCategory: "secondaryCategory",
-        //     title: "title",
-        //     author: "author",
-        //     description: "description",
-        //     imageURL: "imageURL",
-        //     bookLengthMinutes: 100, // find conversion is seed function
-        //     bookLengthText: "1 hr 40min", // find conversion is seed function
-        //     dropboxLocation: "dropboxLocation",
-        //     genres: "genres",
-        //     narratedBy: "narratedBy",
-        //     pageCount: 100,
-        //     publishedYear: 1970,
-        //     releaseDate: new Date(),
-        //     source: "test",
-        //   },
-        // });
-        // return createdBook;
-    });
+const inquirer_1 = __importDefault(require("inquirer"));
+const chalk = require("chalk");
+const inquiererQuestions_1 = require("./inquiererQuestions");
+const music_walkdir_1 = require("./music-walkdir");
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~ This is the entry point when testing
+//~~ using the "npm run start"
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// type Test = {
+//   _id: string;
+// };
+// const dirToTest = "D:/Dropbox/Mark/myAudioBooks";
+// async function main() {
+//   return inquirer.prompt(bookOrMusicQuestion).then((answer) => {
+//     if (answer === "audiobooks") {
+//       console.log("aduiobook");
+//     } else {
+//       // return musicProcess();
+//       console.log("Msuic");
+//     }
+//   });
+// }
+// //~ -----------------------------------------------------
+// //~ BOOK Process
+// //~ -----------------------------------------------------
+async function bookProcess() {
+    console.log(chalk.green(" ====== "), chalk.bgGreen("Audiobook Walker"), chalk.green(" ================"), `\n You will have the choice to write the data found to MongoDB and will always get two files
+    written to your output directory.  The full aggregated metadata file and the clean aggregated metadata file.
+    The clean file will simply have "clean-" prepended to your output filename.
+    The clean file is used in the Audiobook Tracker application.\n`, chalk.green(`=====================================`));
+    const answers = (await inquirer_1.default.prompt(inquiererQuestions_1.bookQuestions));
+    console.log(`Call Main with, ${JSON.stringify(answers)}`);
+    //-------------------------------
+    const { shouldContinue } = await inquirer_1.default.prompt([
+        {
+            type: "confirm",
+            name: "shouldContinue",
+            message: `Continue using the following inputs?
+        Starting Directory: ${chalk.cyan(answers.startingDir)}
+        Depth: ${chalk.cyan(answers.depthToCategory)}
+        Output Directory: ${chalk.cyan(answers.outputDir)}
+        Output Filename: ${chalk.cyan(answers.outputFilename)}
+        Save to MongoDB: ${chalk.cyan(answers.mongoDBUpdateFlag)}
+        Only Aggregate Info: ${chalk.cyan(answers.onlyAggregateFlag)}\n`,
+            default: true,
+        },
+    ]);
+    if (!shouldContinue)
+        return;
+    if (!answers.onlyAggregateFlag) {
+        const results = await (0, audiobook_walkdir_1.walkAndTagDirs)(answers.startingDir, answers.queryGoolge, answers.mongoDBUpdateFlag);
+    }
+    const final = (0, audiobook_walkdir_1.writeAggrMetaData)(answers.startingDir, answers.outputDir, answers.outputFilename, true, // Create clean file
+    answers.depthToCategory);
+    console.log(chalk.green(`Data written to ${path_1.default.join(answers.outputDir, answers.outputFilename)} and clean-${answers.outputFilename}`));
+    return chalk.green("Books Finished!");
+    // return new Promise((res, rej) => res("Books Finished!"));
 }
-main()
-    .then(() => __awaiter(void 0, void 0, void 0, function* () {
-    yield prisma_1.prisma.$disconnect();
-}))
-    .catch((e) => __awaiter(void 0, void 0, void 0, function* () {
-    console.error(e);
-    yield prisma_1.prisma.$disconnect();
-    process.exit(1);
-}));
+// //~ -----------------------------------------------------
+// //~ MUSIC Process
+// //~ -----------------------------------------------------
+async function musicProcess() {
+    console.log(chalk.cyan(" ====== "), chalk.bgCyan("Music Walker"), chalk.cyan(" ================"), `\n  Calls the module: walkentry {type} {starting directory} {output location} {output filename} {starting depth (optional)}
+    starting depth should be 0 if artist dir in the starting dir (startingDir/artist1, startingDir/artist2, etc)
+    starting depth should be -1 if there is a "genre" folder before artists (startingDir/genre1/artist1, startingDir/genre1/artist2, etc)\n`, chalk.cyan(`=====================================`));
+    const answers = await inquirer_1.default.prompt(inquiererQuestions_1.musicQuestions);
+    //-------------------------------
+    const { shouldContinue } = await inquirer_1.default.prompt([
+        {
+            type: "confirm",
+            name: "shouldContinue",
+            message: `Continue using the following inputs?
+      Starting Directory: ${chalk.cyan(answers.dir)}
+      Depth: ${chalk.cyan(answers.depth)}
+      Output Directory: ${chalk.cyan(answers.outputLocation)}
+      Output Filename: ${chalk.cyan(answers.outputfileName)}\n`,
+            default: true,
+        },
+    ]);
+    if (shouldContinue) {
+        return await (0, music_walkdir_1.musicWalker)(answers.dir, answers.depth).then((res) => {
+            fs_1.default.writeFileSync(path_1.default.join(answers.outputLocation, answers.outputfileName), JSON.stringify(res));
+            return chalk.cyan(`Output written to ${answers.outputfileName}`);
+        });
+    }
+    else {
+        // return new Promise((res, rej) => res("Music Walk aborted!"));
+        return chalk.red("Music Walk aborted!");
+    }
+}
+// main().then((res) => console.log("WTF", res));
+async function choosePath(res) {
+    console.log("res", res);
+    if (res.bookOrMusic === "music") {
+        return musicProcess();
+    }
+    else {
+        return bookProcess();
+    }
+}
+inquirer_1.default
+    .prompt(inquiererQuestions_1.bookOrMusicQuestion)
+    .then((res) => {
+    return choosePath(res);
+})
+    .then((res) => console.log("Complete -> ", res));
+// async function mainOld() {
+//   const { queryGoogle, dirArray, folderMetadataArray } = await walkAndTagDirs(
+//     dirToTest,
+//     "yes"
+//   );
+//   console.log("Done Processing", folderMetadataArray.length);
+//   // const result = await prisma.books.findRaw({
+//   //   filter: { _id: { $eq: { $oid: "63c8c4183e2f12c0e4b0cce0" } } },
+//   //   options: { projection: { _id: true, showRecordId: true } },
+//   // });
+//   // //const newRes: Test[] = result;
+//   // return result[0];
+//   // const createdBook = await prisma.books.create({
+//   //   data: {
+//   //     primaryCategory: "primaryCategory",
+//   //     secondaryCategory: "secondaryCategory",
+//   //     title: "title",
+//   //     author: "author",
+//   //     description: "description",
+//   //     imageURL: "imageURL",
+//   //     bookLengthMinutes: 100, // find conversion is seed function
+//   //     bookLengthText: "1 hr 40min", // find conversion is seed function
+//   //     dropboxLocation: "dropboxLocation",
+//   //     genres: "genres",
+//   //     narratedBy: "narratedBy",
+//   //     pageCount: 100,
+//   //     publishedYear: 1970,
+//   //     releaseDate: new Date(),
+//   //     source: "test",
+//   //   },
+//   // });
+//   // return createdBook;
+// }
+//! -------------------------------------
+// main()
+//   .then(async () => {
+//     await prisma.$disconnect();
+//   })
+//   .catch(async (e) => {
+//     console.error(e);
+//     await prisma.$disconnect();
+//     process.exit(1);
+//   });
+//! -------------------------------------
 // const dir = "D:/Dropbox/Mark/myAudioBooks";
 // const dir = "D:/Dropbox/Mark/myAudioBooks/NonFiction";
 // walkAndTagDirs(dir, "yes");

@@ -47,12 +47,13 @@ if (runType === "audiobook") {
   console.log("Argv.length", process.argv.length, process.argv);
   if (process.argv.length < 5) {
     console.log(
-      `Usage: \n __filename {type} {aggr only} {aggr output location} {aggr output filename} {starting directory} {call google api}
+      `Usage: \n __filename {type} {aggr only} {aggr output location} {aggr output filename} {starting directory} {call google api} {depthToCategory} {updateMongoDBFlag}
                     type = "audiobook" | "music"
                     aggr only = "yes" | "no"
                     ...
                     call google api = "yes" | "no" | "force"
-                    depthToCategory -> this is number of dirs before we hit the primary category, if let blank, don't calc primary/secondary dirs
+                    depthToCategory -> this is number of dirs before we hit the primary category, if left blank, don't calc primary/secondary dirs
+                    updateMongoDBFlag = boolean, true will update mongo
       `
     );
     process.exit(-1);
@@ -63,18 +64,21 @@ if (runType === "audiobook") {
   const startingDir = process?.argv[6];
   const callGoogleApi = process?.argv[7];
   const depthToCategory = parseInt(process?.argv[8]) || undefined;
+  const updateMongoDbFlag = process?.argv[9];
 
   if (!isAggrOnly) {
-    walkAndTagDirs(startingDir, callGoogleApi).then((res) => {
-      writeAggrMetaData(
-        startingDir,
-        outputPath,
-        outputFile,
-        true,
-        depthToCategory
-      );
-      console.log(`Data written to ${path.join(outputPath, outputFile)}`);
-    });
+    walkAndTagDirs(startingDir, callGoogleApi, updateMongoDbFlag).then(
+      (res) => {
+        writeAggrMetaData(
+          startingDir,
+          outputPath,
+          outputFile,
+          true,
+          depthToCategory
+        );
+        console.log(`Data written to ${path.join(outputPath, outputFile)}`);
+      }
+    );
   } else {
     // The last param (true) is telling it to create a "clean" data file also
     writeAggrMetaData(
