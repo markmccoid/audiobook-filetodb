@@ -10,7 +10,7 @@
     "walkentry": "ts-node ./src/walkentry.ts",
     "start:dev": "nodemon",
     "build": "rimraf ./build && tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",

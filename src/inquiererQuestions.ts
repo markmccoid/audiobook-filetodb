@@ -65,7 +65,7 @@ export type BookAnswers = {
   mongoDBUpdateFlag: boolean;
   outputFilename: string;
   outputDir: string;
-  queryGoolge: "yes" | "no" | "force";
+  queryGoogle: "yes" | "no" | "force";
   onlyAggregateFlag: boolean;
 };
 export const bookQuestions = [
@@ -109,7 +109,7 @@ export const bookQuestions = [
     type: "input",
     name: "outputDir",
     message: "What is the directory to output file to?",
-    default: "D:/Dropbox/Mark/myAudioBooks",
+    default: "D:/Dropbox/Mark/myAudioBooks/output_ignore",
     filter(val) {
       return fixPath(val);
     },

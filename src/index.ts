@@ -78,7 +78,7 @@ async function bookProcess() {
   if (!answers.onlyAggregateFlag) {
     const results = await walkAndTagDirs(
       answers.startingDir,
-      answers.queryGoolge,
+      answers.queryGoogle,
       answers.mongoDBUpdateFlag
     );
   }
