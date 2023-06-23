@@ -136,6 +136,7 @@ async function walkAndTagDirs(dir, queryGoogle = "no", mongoDBUpdateFlag = true,
         // else keep same
         if ((queryGoogle === "yes" && !currentMetadata.googleData) ||
             queryGoogle === "force") {
+            // console.log("In Getting goold Data");
             googleData = await (0, fetchData_1.getBookData)(folderBookAuthor, folderBookTitle);
             currentMetadata.wasGoogleQueried = true;
         }

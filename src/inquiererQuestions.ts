@@ -89,8 +89,8 @@ export const bookQuestions = [
   {
     type: "confirm",
     name: "mongoDBUpdateFlag",
-    message: "Update/Create Mongo DB Records?",
-    default: true,
+    message: "Update/Create Mongo DB Records? - NOT WORKING HIT ENTER",
+    default: false,
   },
   {
     type: "input",

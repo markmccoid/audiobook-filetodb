@@ -74,8 +74,8 @@ exports.bookQuestions = [
     {
         type: "confirm",
         name: "mongoDBUpdateFlag",
-        message: "Update/Create Mongo DB Records?",
-        default: true,
+        message: "Update/Create Mongo DB Records? - NOT WORKING HIT ENTER",
+        default: false,
     },
     {
         type: "input",
@@ -94,7 +94,7 @@ exports.bookQuestions = [
         type: "input",
         name: "outputDir",
         message: "What is the directory to output file to?",
-        default: "D:/Dropbox/Mark/myAudioBooks",
+        default: "D:/Dropbox/Mark/myAudioBooks/output_ignore",
         filter(val) {
             return fixPath(val);
         },

@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/inquirer": "^9.0.3",
     "@types/node": "^18.11.3",
     "nodemon": "^2.0.20",
     "prisma": "^4.9.0",

@@ -32,7 +32,7 @@ function extractDirectories(dir, depthToCategory) {
     };
 }
 function createCleanFile(baseData, depthToCategory) {
-    return baseData.map((book) => {
+    return baseData.map((book, index) => {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
         // decide on data for fields that come from multiple sources
         // if infoFileData available use it for the following:
@@ -46,7 +46,7 @@ function createCleanFile(baseData, depthToCategory) {
         const publishedYear = parseInt((_k = book.folderNameData) === null || _k === void 0 ? void 0 : _k.publishedYear) ||
             parseInt((_m = (_l = book.googleAPIData) === null || _l === void 0 ? void 0 : _l.publishedDate) === null || _m === void 0 ? void 0 : _m.slice(0, 4));
         const releaseDate = ((_o = book.infoFileData) === null || _o === void 0 ? void 0 : _o.releaseDate) || ((_p = book.googleAPIData) === null || _p === void 0 ? void 0 : _p.publishedDate);
-        const imageURL = ((_q = book.googleAPIData) === null || _q === void 0 ? void 0 : _q.imageURL) || book.folderImages[0];
+        const imageURL = ((_q = book.googleAPIData) === null || _q === void 0 ? void 0 : _q.imageURL) || (book === null || book === void 0 ? void 0 : book.folderImages[0]);
         // Concate all categories together and filter out blanks (we remove dups when assigning to object)
         const categories = [
             (_r = book.folderNameData) === null || _r === void 0 ? void 0 : _r.category,

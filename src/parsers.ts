@@ -147,6 +147,10 @@ export function parseBookInfoText(textFile) {
       continue;
     }
     //-- Author and Narrator
+    if (lowercaseLine.includes("author:")) {
+      bookInfo.author = line.substring(lowercaseLine.indexOf(":") + 1).trim();
+      continue;
+    }
     if (lowercaseLine.includes("by:")) {
       if (lowercaseLine.indexOf("by:") < 2) {
         bookInfo.author = line.substring(lowercaseLine.indexOf(":") + 1).trim();

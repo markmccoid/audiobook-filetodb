@@ -230,7 +230,7 @@ export async function walkAndTagDirs(
       (queryGoogle === "yes" && !currentMetadata.googleData) ||
       queryGoogle === "force"
     ) {
-      console.log("In Getting goold Data");
+      // console.log("In Getting goold Data");
       googleData = await getBookData(folderBookAuthor, folderBookTitle);
       currentMetadata.wasGoogleQueried = true;
     } else {
