@@ -128,7 +128,10 @@ export function cleanOneBook(
     parseInt(book.googleAPIData?.publishedDate?.slice(0, 4));
   const releaseDate =
     book.infoFileData?.releaseDate || book.googleAPIData?.publishedDate;
-  const imageURL = book.googleAPIData?.imageURL || book?.folderImages[0];
+  const imageURL =
+    book.googleAPIData?.imageURL || Array.isArray(book?.folderImages)
+      ? book?.folderImages[0]
+      : undefined;
   // Concate all categories together and filter out blanks (we remove dups when assigning to object)
   const categories = [
     book.folderNameData?.category,

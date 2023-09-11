@@ -92,7 +92,9 @@ function cleanOneBook(book, depthToCategory = 4) {
     const publishedYear = parseInt((_k = book.folderNameData) === null || _k === void 0 ? void 0 : _k.publishedYear) ||
         parseInt((_m = (_l = book.googleAPIData) === null || _l === void 0 ? void 0 : _l.publishedDate) === null || _m === void 0 ? void 0 : _m.slice(0, 4));
     const releaseDate = ((_o = book.infoFileData) === null || _o === void 0 ? void 0 : _o.releaseDate) || ((_p = book.googleAPIData) === null || _p === void 0 ? void 0 : _p.publishedDate);
-    const imageURL = ((_q = book.googleAPIData) === null || _q === void 0 ? void 0 : _q.imageURL) || (book === null || book === void 0 ? void 0 : book.folderImages[0]);
+    const imageURL = ((_q = book.googleAPIData) === null || _q === void 0 ? void 0 : _q.imageURL) || Array.isArray(book === null || book === void 0 ? void 0 : book.folderImages)
+        ? book === null || book === void 0 ? void 0 : book.folderImages[0]
+        : undefined;
     // Concate all categories together and filter out blanks (we remove dups when assigning to object)
     const categories = [
         (_r = book.folderNameData) === null || _r === void 0 ? void 0 : _r.category,
