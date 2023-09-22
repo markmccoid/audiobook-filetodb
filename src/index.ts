@@ -1,18 +1,10 @@
 import fs from "fs";
 import path from "path";
-import {
-  walkAndAggrMetadata,
-  walkAndTagDirs,
-  writeAggrMetaData,
-} from "./audiobook-walkdir";
+import { walkAndAggrMetadata, walkAndTagDirs, writeAggrMetaData } from "./audiobook-walkdir";
 
 import inquirer from "inquirer";
 import chalk = require("chalk");
-import {
-  bookOrMusicQuestion,
-  bookQuestions,
-  musicQuestions,
-} from "./inquiererQuestions";
+import { bookOrMusicQuestion, bookQuestions, musicQuestions } from "./inquiererQuestions";
 import type { MusicAnswers, BookAnswers } from "./inquiererQuestions";
 import { musicWalker } from "./music-walkdir";
 
@@ -56,7 +48,13 @@ async function bookProcess() {
   const answers = (await inquirer.prompt(bookQuestions)) as BookAnswers;
 
   console.log(`Call Main with, ${JSON.stringify(answers)}`);
-
+  const processChapters = answers.queryForChapters === "false" ? false : true;
+  let chapterFileTypes;
+  let chapterForce = false;
+  if (processChapters) {
+    chapterFileTypes = answers.queryForChapters.split("|")[1] === "2" ? "both" : "m4b";
+    chapterForce = answers.queryForChapters.split("|")?.[2] === "force" ? true : false;
+  }
   //-------------------------------
   const { shouldContinue } = await inquirer.prompt([
     {
@@ -68,18 +66,22 @@ async function bookProcess() {
         Output Directory: ${chalk.cyan(answers.outputDir)}
         Output Filename: ${chalk.cyan(answers.outputFilename)}
         Save to MongoDB: ${chalk.cyan(answers.mongoDBUpdateFlag)}
+        Query Chapters: ${chalk.cyan(processChapters)}-FORCE-${chapterForce}
         Only Aggregate Info: ${chalk.cyan(answers.onlyAggregateFlag)}\n`,
       default: true,
     },
   ]);
 
   if (!shouldContinue) return;
-
+  console.log("CHAPT", processChapters, chapterFileTypes, chapterForce);
   if (!answers.onlyAggregateFlag) {
     const results = await walkAndTagDirs(
       answers.startingDir,
       answers.queryGoogle,
-      answers.mongoDBUpdateFlag
+      answers.mongoDBUpdateFlag,
+      processChapters,
+      chapterFileTypes,
+      chapterForce
     );
   }
 
@@ -93,10 +95,9 @@ async function bookProcess() {
 
   console.log(
     chalk.green(
-      `Data written to ${path.join(
-        answers.outputDir,
+      `Data written to ${path.join(answers.outputDir, answers.outputFilename)} and clean-${
         answers.outputFilename
-      )} and clean-${answers.outputFilename}`
+      }`
     )
   );
   return chalk.green("Books Finished!");

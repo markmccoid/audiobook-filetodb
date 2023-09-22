@@ -67,6 +67,7 @@ export type BookAnswers = {
   outputDir: string;
   queryGoogle: "yes" | "no" | "force";
   onlyAggregateFlag: boolean;
+  queryForChapters: "false" | "true|1" | "true|2";
 };
 export const bookQuestions = [
   {
@@ -124,11 +125,31 @@ export const bookQuestions = [
       "Force - Query google for EVERY book, even if it already has data",
     ],
     filter(val) {
-      const validatedData = val.includes("Yes")
-        ? "yes"
-        : val.includes("Force")
-        ? "force"
-        : "no";
+      const validatedData = val.includes("Yes") ? "yes" : val.includes("Force") ? "force" : "no";
+      return validatedData;
+    },
+  },
+  {
+    type: "list",
+    name: "queryForChapters",
+    message: `Do you want to query for Chapter data?  FORCE will requery files that already have a laab json file`,
+    choices: [
+      "No - Don't look for chapter data",
+      "Yes, but - only M4B files (1)",
+      "Yes, but - only M4B files 1 - FORCE",
+      "Yes, but - both M4B and MP3 files (2)",
+      "Yes, but - both M4B and MP3 files 2 - FORCE",
+    ],
+    filter(val) {
+      const validatedData = val.includes("No")
+        ? "false"
+        : val.includes("(2)")
+        ? "true|2"
+        : val.includes("(1)")
+        ? "true|1"
+        : val.includes("2 - FORCE")
+        ? "true|2|force"
+        : "true|1|force";
       return validatedData;
     },
   },

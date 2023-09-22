@@ -17,17 +17,12 @@ import fs from "fs";
 import path from "path";
 import chalk from "chalk";
 
-import {
-  parseFolderName,
-  parseBookInfoText,
-  getMetadataFromFile,
-  updateMongoDb,
-} from "./parsers";
+import { parseFolderName, parseBookInfoText, getMetadataFromFile, updateMongoDb } from "./parsers";
 import { getBookData, fakeGetBookData } from "./fetchData";
 import type { BookInfo } from "./parsers";
 import type { GoogleData } from "./fetchData";
 import { createCleanFile } from "./audiobook-createCleanFile";
-
+import { getChapterData } from "./toneChapters";
 export type FolderMetadata = {
   id: string;
   folderName: string;
@@ -88,12 +83,15 @@ export async function walkAndTagDirs(
   // Directory to start at
   dir: string,
   // "no" | "yes" | "force" default "no"
-  // Should we query google? "yes" will only query google if folder's metadata DOES NOT
+  // Should we query google? "yes" will only query google if folder' metadata DOES NOT
   // have any google info.  "force" will force a search regardless of data in metadata json file
   queryGoogle?: QueryGoogle,
   // Used in recursion (do not pass when calling)
   // Should we update/create records in MongoDB
   mongoDBUpdateFlag?: boolean,
+  processChapters?: boolean,
+  chapterFileTypes?: "m4b" | "both",
+  chapterForce?: boolean,
   // Used in recursion (do not pass when calling at top level)
   dirArray?: string[],
   folderMetadataArray?: FolderMetadata[]
@@ -106,14 +104,15 @@ export async function walkAndTagDirs(
   dir: string,
   queryGoogle: QueryGoogle = "no",
   mongoDBUpdateFlag: boolean = true,
+  processChapters: boolean = true,
+  chapterFileTypes: "m4b" | "both" = "m4b",
+  chapterForce = false,
   dirArray: string[] = [],
   folderMetadataArray: FolderMetadata[] = []
 ) {
   // Read the directory passed (probably need a check or error handling if not a dir passed)
   // Exclude any files or directories that have "_ignore" in them.
-  const files = fs
-    .readdirSync(dir)
-    .filter((file) => !file.toLowerCase().includes("_ignore"));
+  const files = fs.readdirSync(dir).filter((file) => !file.toLowerCase().includes("_ignore"));
   let terminalDirFlag = false;
   const directDirName = formatPath(dir);
   const baseName = path.basename(dir);
@@ -181,9 +180,7 @@ export async function walkAndTagDirs(
     //-- if txt file and has part of the author extracted from folder then process as info file
     if (
       ext === ".txt" &&
-      fileName
-        .toLowerCase()
-        .includes(folderBookAuthor.toLowerCase().slice(0, 4))
+      fileName.toLowerCase().includes(folderBookAuthor.toLowerCase().slice(0, 4))
     ) {
       firstPassObj.textFileCount = firstPassObj.textFileCount + 1;
       firstPassObj.bookInfo = parseBookInfoText(dirPath);
@@ -191,8 +188,7 @@ export async function walkAndTagDirs(
     if (ext === ".json" && fileName.toLowerCase().includes("-metadata")) {
       // if metadata json file exists pull some data to determine if we need to
       // query google and/or upload to mongoDB
-      const { googleData, mongoDBId, forceMongoUpdate } =
-        getMetadataFromFile(dirPath);
+      const { googleData, mongoDBId, forceMongoUpdate } = getMetadataFromFile(dirPath);
       currentMetadata.googleData = googleData;
       currentMetadata.mongoDBId = mongoDBId;
       currentMetadata.forceMongoUpdate = forceMongoUpdate; // if true, we will update mongo
@@ -226,10 +222,7 @@ export async function walkAndTagDirs(
     let googleData;
     // if query flag true AND we didn't already find populated google data, then query
     // else keep same
-    if (
-      (queryGoogle === "yes" && !currentMetadata.googleData) ||
-      queryGoogle === "force"
-    ) {
+    if ((queryGoogle === "yes" && !currentMetadata.googleData) || queryGoogle === "force") {
       // console.log("In Getting goold Data");
       googleData = await getBookData(folderBookAuthor, folderBookTitle);
       currentMetadata.wasGoogleQueried = true;
@@ -289,6 +282,12 @@ export async function walkAndTagDirs(
       " - Processed ",
       chalk.bgCyan(currentMetadata.wasGoogleQueried ? " !Google Queried!" : "")
     );
+
+    // Call TONE.exe to get potential chapter information
+    //! Need to be able to pass flag to force overwrite of existing file
+    if (processChapters) {
+      await getChapterData(`${firstPassObj.basePath}`, chapterFileTypes, chapterForce);
+    }
   }
 
   if (terminalDirFlag) {
@@ -311,6 +310,9 @@ export async function walkAndTagDirs(
         dirPath,
         queryGoogle,
         mongoDBUpdateFlag,
+        processChapters,
+        chapterFileTypes,
+        chapterForce,
         dirArray,
         folderMetadataArray
       );
@@ -334,11 +336,7 @@ export function walkAndAggrMetadata(
   dirArray: string[];
   folderMetadataArray: FolderMetadata[]; //Record<string, string>[];
 };
-export function walkAndAggrMetadata(
-  dir,
-  dirArray = [],
-  folderMetadataArray = []
-) {
+export function walkAndAggrMetadata(dir, dirArray = [], folderMetadataArray = []) {
   const files = fs.readdirSync(dir);
   for (let i = 0; i < files.length; i++) {
     const fileName = files[i];
@@ -351,9 +349,7 @@ export function walkAndAggrMetadata(
     }
 
     if (ext === ".json" && fileName.toLowerCase().includes("-metadata")) {
-      const metadata: FolderMetadata = JSON.parse(
-        fs.readFileSync(dirPath, "utf8")
-      );
+      const metadata: FolderMetadata = JSON.parse(fs.readFileSync(dirPath, "utf8"));
       folderMetadataArray.push(metadata);
     }
   }
